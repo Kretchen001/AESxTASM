@@ -1,6 +1,5 @@
 % Kapitel 3 -- Die ASM-Dateien (Stand: Version 2.0.0)
-% Offene Stellen aus der Ueberarbeitung sind noch mit "% TODO v2.0.0" markiert
-% und werden in den folgenden Commits abgearbeitet.
+% Alle TODO-Marker der Ueberarbeitung auf 2.0.0 sind abgearbeitet.
 \section{Die ASM-Dateien und ihr Inhalt}\label{sec:asm-dateien}
 
 \textbf{HINWEIS:} Begriffe wie \emph{Zustand}, $\mathrm{GF}(2^8)$ und die Rollen der Register sind in Kapitel~\ref{sec:grundlagen} erklärt. Zu jeder Datei findet hier eine Beschreibung statt. Meist ist jedoch die genauere Erklärung im Quelltext als Kommentar hinter den jeweiligen Befehlszeilen zu finden. Zusätzlich gibt es im Kopf jeder Datei eine Beschreibung, die diesem Werk ähnelt. Es soll lediglich dazu dienen, diese Kopf-Kommentare zu erweitern, noch besser zu strukturieren und einen allgemeinen Überblick zu erhalten.
@@ -117,46 +116,88 @@ Nach dem selben Muster erfolgt auch die Eingabe für den Schlüssel, hier in den
 Bei \asm{AufrufenEntAusASM} wird erst \emph{nach} der Eingabe \asm{SchluesselInitialisieren} aufgerufen, sodass \asm{Rundenschluessel\_Expand} den eingegebenen Schlüssel enthält und die Rundenkonstante wieder bei \hexo{5F} startet. Danach wird per \asm{INCLUDE} der Ablauf der Entschlüsselung aus der \asm{Ablauf\_E.asm} (Abschnitt~\ref{sec:ablauf-e}) eingefügt. Die Ausgabe (\asm{BildschirmVar} $=5$) schreibt die 64 Bytes des \asm{TastaturBuffer} \emph{unverändert als ASCII-Zeichen} (je ein Wort mit Attribut \asm{0Fh}) ab Offset \asm{1936}; Bytes mit Wert \asm{00h} erscheinen als Leerstellen. \asm{ESC} beendet die Anzeige, \asm{ReturnEntsch} leert die Puffer und schaltet die Maus wieder ein.
 
 %------------------------------------------------------------------------------
-\subsection{Ablauf\_V.asm}
-In dieser ASM-Datei wird der allgemeine Ablauf geregelt, der bei einer Verschlüsselung stattfindet. Die Umsetzung in den Labels erfolgte nach diesem Muster (siehe nächste Seite), welches nochmal textuell ergänzend erklärt ist.
+\subsection{Ablauf\_V.asm}\label{sec:ablauf-v}
+In dieser ASM-Datei wird der allgemeine Ablauf geregelt, der bei einer Verschlüsselung stattfindet. Die Datei wird in \asm{Ver\_Code.asm} per \asm{INCLUDE} eingefügt und besteht im \emph{aktiven} Teil aus einer geraden Folge von neun \asm{CALL}s ohne Schleife und ohne Label. Das Muster der AES-Standardverschlüsselung zeigt die folgende Abbildung; der tatsächliche Ablauf steht darunter in Tabelle~\ref{tab:ablauf-v}.
 
 \begin{figure}[!htbp]
     \centering
     \includegraphics[height=0.5\textheight,keepaspectratio]{images/schema_verschluesselung.png}
-    \caption{Schema Verschlüsselung mit AES -- Quelle: \cite{ceilers_ver}}
+    \caption{Schema Verschlüsselung mit AES (Standardablauf) -- Quelle: \cite{ceilers_ver}}
     \label{fig:schema-ver-2}
 \end{figure}
 
-\subsubsection{AblaufVerVorrunde (Label)}
-Hier geschieht lediglich die Verrechnung mit dem Rundenschlüssel nach der ersten Schlüsselexpansion.
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Aktiver Ablauf der Verschlüsselung (\asm{Ablauf_V.asm}, Version \versionProjekt)}\label{tab:ablauf-v}
+    \begin{tabular}{@{}clll@{}}
+        \toprule
+        \textbf{Schritt} & \textbf{Aufruf} & \textbf{Wirkung auf den Zustand} & \textbf{Schlüssel} \\
+        \midrule
+        1 & \asm{SBOXSubstitution} & jedes Byte durch S-Box ersetzt & -- \\
+        2 & \asm{Schluesselexpansion} & -- & $K_0\to K_1$ \\
+        3 & \asm{SchluesselAnwenden} & \asm{XOR} mit $K_1$ & $K_1$ \\
+        4 & \asm{ShiftRow} & Zeilen rotiert & -- \\
+        5 & \asm{SBOXSubstitution} & S-Box & -- \\
+        6 & \asm{Schluesselexpansion} & -- & $K_1\to K_2$ \\
+        7 & \asm{SchluesselAnwenden} & \asm{XOR} mit $K_2$ & $K_2$ \\
+        8 & \asm{ShiftRow} & Zeilen rotiert & -- \\
+        9 & \asm{SBOXSubstitution} & S-Box & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-\subsubsection{AblaufVer (Label)}
-Dies sind die Hauptrunden der Verschlüsselung. Die Anzahl der Runden werden in der \asm{Rundenanzahl} definiert. Durch den Beginn des Vergleichswertes in \asm{CL} (Register) mit 1 wird auch tatsächlich die Anzahl der gewünschten Runden durchlaufen. Die Schlussrunde läuft anders ab, wird aber als (1) Runde mitgezählt.
+Als Formel, mit dem Klartext $m$ und dem Chiffretext $c$:
+\[
+    c = S\Bigl(\mathrm{SR}\bigl(S(\mathrm{SR}(S(m)\oplus K_1))\oplus K_2\bigr)\Bigr)
+\]
+Der Ablauf besteht aus zwei \glqq Runden\grqq{} (Schritte~2--5 und~6--9, jeweils Schlüssel, ShiftRow, S-Box) und einer vorgeschalteten S-Box-Stufe. Er ist \emph{nicht} identisch mit dem Ablauf nach \cite{fips197}: Es gibt keine Anfangs-Schlüsseladdition, keine MixColumns-Stufe und nur zwei statt zehn Runden. Der Schlüssel wird vor dem \asm{ShiftRow} angewandt, nicht danach.
 
-In der Reihenfolge werden hier die einzelnen Werte erst substituiert (Prinzip siehe \asm{SBOX.asm}), dann die Reihen rotiert (\asm{ShiftRow}) mit anschließendem \asm{ShiftColumn}. Zuletzt findet eine Schlüsselexpansion statt, damit der Rundenschlüssel erzeugt und nachfolgend auf den \asm{TastaturBuffer} gerechnet wird.
-
-\subsubsection{AblaufVerEndrunde (Label)}
-Diese letzte Runde findet ähnlich den Hauptrunden statt, jedoch wird hier die Verrechnung der Spalten per \asm{ShiftColumn} weggelassen. Die nun erwähnte Ausgabe wird wiederum in der \asm{Ver_Code.asm} geregelt.
+\subsubsection{Die auskommentierte Standardvariante}
+Unter dem aktiven Teil steht in der Datei, auskommentiert, eine Variante \glqq Nach AES-Standard\grqq{} mit den Labels \asm{AblaufVerVorrunde} (erste Expansion und Schlüssel anwenden), \asm{AblaufVer} (Hauptrunden: S-Box, \asm{ShiftRow}, Schlüssel; die Anzahl steuert \asm{Rundenanzahl} über den Zähler \asm{CL}, der bei 1 beginnt und bis \asm{Rundenanzahl} zählt, daher 9 Durchläufe bei 10) und \asm{AblaufVerEndrunde} (letzte Runde). Auch dort ist der Aufruf von \asm{ShiftColumn} nur Kommentar. Diese Variante ist nicht aktiviert und wurde nicht getestet.
 
 %------------------------------------------------------------------------------
-\subsection{Ablauf\_E.asm}
-In dieser ASM-Datei wird der allgemeine Ablauf geregelt, der bei einer Entschlüsselung stattfindet. Die Umsetzung in den Labels erfolgte nach dem Muster auf der nächsten Seite, welches nochmal textuell ergänzend erläutert ist. AES ist ein symmetrisches Verfahren. Somit ist erkennbar, dass die Entschlüsselung wie die inverse Verschlüsselung stattfindet.
+\subsection{Ablauf\_E.asm}\label{sec:ablauf-e}
+In dieser ASM-Datei wird der allgemeine Ablauf geregelt, der bei einer Entschlüsselung stattfindet. AES ist ein symmetrisches Verfahren. Somit ist erkennbar, dass die Entschlüsselung wie die inverse Verschlüsselung stattfindet: dieselben Schritte in umgekehrter Reihenfolge, jeweils mit der Umkehrfunktion.
 
 \begin{figure}[!htbp]
     \centering
     \includegraphics[height=0.5\textheight,keepaspectratio]{images/schema_entschluesselung.png}
-    \caption{Schema Entschlüsselung mit AES -- Quelle: \cite{ceilers_ent}}
+    \caption{Schema Entschlüsselung mit AES (Standardablauf) -- Quelle: \cite{ceilers_ent}}
     \label{fig:schema-ent-2}
 \end{figure}
 
-\subsubsection{AblaufEntVorrunde (Label)}
-In dieser Vorrunde findet nach Schlüsselexpansion die Verrechnung mit diesem Rundenschlüssel, dann ein inverser \asm{ShiftRow} (siehe \asm{ShiftRow_1}) und schließlich die inverse Substitution mit der invertierten \asm{SBOX} statt.
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Aktiver Ablauf der Entschlüsselung (\asm{Ablauf_E.asm}, Version \versionProjekt)}\label{tab:ablauf-e}
+    \begin{tabular}{@{}clll@{}}
+        \toprule
+        \textbf{Schritt} & \textbf{Aufruf} & \textbf{Wirkung auf den Zustand} & \textbf{Schlüssel} \\
+        \midrule
+        1 & \asm{SBOXSubstitution_1} & inverse S-Box (macht Schritt 9 rückgängig) & -- \\
+        2 & \asm{ShiftRow_1} & Zeilen zurückrotiert (Schritt 8) & -- \\
+        3 & \asm{Schluesselexpansion} & -- & $K_0\to K_1$ \\
+        4 & \asm{Schluesselexpansion} & -- & $K_1\to K_2$ \\
+        5 & \asm{SchluesselAnwenden} & \asm{XOR} mit $K_2$ (Schritt 7) & $K_2$ \\
+        6 & \asm{SBOXSubstitution_1} & inverse S-Box (Schritt 5) & -- \\
+        7 & \asm{ShiftRow_1} & Zeilen zurückrotiert (Schritt 4) & -- \\
+        8 & \asm{SchluesselInitialisieren} & -- & zurück auf $K_0$ \\
+        9 & \asm{Schluesselexpansion} & -- & $K_0\to K_1$ \\
+        10 & \asm{SchluesselAnwenden} & \asm{XOR} mit $K_1$ (Schritt 3) & $K_1$ \\
+        11 & \asm{SBOXSubstitution_1} & inverse S-Box (Schritt 1) & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-\subsubsection{AblaufEnt (Label)}
-Hier findet solange die Hauptrunde der Entschlüsselung statt, wie der Rundzähler aus \asm{CL} nicht gleich der Rundenanzahl ist. Damit ist gemeint, dass zunächst der Rundenschlüssel expandiert und aufgerechnet wird, dann die inverse Spaltenrechnung stattfindet, anschließend die inverse Zeilenmischung sowie die abschließende Substitution mit der inversen \asm{SBOX}.
+Der Rundenschlüssel wird nur \emph{vorwärts} erzeugt (jede Expansion liefert den nächsten). Da die Entschlüsselung zuerst $K_2$ und dann $K_1$ braucht, wird der Schlüssel zweimal hintereinander expandiert und später mit \asm{SchluesselInitialisieren} auf $K_0$ zurückgesetzt, um $K_1$ erneut zu erzeugen. Die Formel lautet
+\[
+    m = S^{-1}\Bigl(\mathrm{SR}^{-1}\bigl(S^{-1}(\mathrm{SR}^{-1}(S^{-1}(c))\oplus K_2)\bigr)\oplus K_1\Bigr).
+\]
+Ob die Beschreibung stimmt, wurde im Python-Modell nachgerechnet: Mit beliebigen Schlüsseln und Texten ergibt die Entschlüsselung des Chiffretextes wieder den Klartext (500 von 500 Zufallsfällen).
 
-\subsubsection{AblaufEntEndrunde (Label)}
-In dieser Schlussrunde wird, dank dem symmetrischen Verfahren, lediglich der Rundenschlüssel auf den \asm{TastaturBuffer} gerechnet. Dies entspricht der Vorrunde des Verschlüsselungsablaufes.
+\subsubsection{Die auskommentierte Standardvariante}
+Wie bei der Verschlüsselung enthält die Datei darunter, auskommentiert, die Labels \asm{AblaufEntVorrunde}, \asm{AblaufEnt} (Schleife über \asm{Rundenanzahl}) und \asm{AblaufEntEndrunde}. Sie ist nicht aktiv; auch hier steht \asm{ShiftColumn\_1} nur als Kommentar.
 
 %------------------------------------------------------------------------------
 \subsection{VERS.asm}
@@ -219,8 +260,17 @@ Zeile 3 wird um 2 Stellen und die 4. Zeile um 3 Stellen rotiert. Dieses Muster w
 
 \textbf{Fehler in Version 1.0.} Die Prüfung lautete früher \asm{CMP CX, 4}, sodass nur drei Blöcke bearbeitet wurden und die Bytes 48 bis 63 unverschoben blieben. Das gleiche galt für \asm{ShiftRow_1}. Seit 2.0.0 (Commit \commit{1990683}) werden alle vier Blöcke bearbeitet. Das Ergebnis wurde im Python-Modell gegen $\mathrm{neu}[c]=\mathrm{alt}[(c+r)\bmod 4]$ geprüft.
 
-\subsubsection{ShiftColumn (PROC)}
-Diese \asm{PROC} setzt das Spaltenrechnen von AES um. Dabei wird mithilfe der C-Matrix eine Verrechnung der einzelnen Spalten vorgenommen, da man sich hier wieder die Blöcke aus 16 Einträgen vorstellen muss. Nachfolgende Grafik soll dies zeigen:
+\subsubsection{ShiftColumn (PROC)}\label{sec:vers-shiftcolumn}
+Diese \asm{PROC} setzt das Spaltenrechnen (\emph{MixColumns}) von AES um. Dabei wird mithilfe der C-Matrix
+\[
+    C=\begin{pmatrix}
+        2 & 3 & 1 & 1 \\
+        1 & 2 & 3 & 1 \\
+        1 & 1 & 2 & 3 \\
+        3 & 1 & 1 & 2
+    \end{pmatrix}
+\]
+eine Verrechnung der einzelnen Spalten vorgenommen, da man sich hier wieder die Blöcke aus 16 Einträgen vorstellen muss. Nachfolgende Grafik soll dies zeigen:
 
 \begin{figure}[!htbp]
     \centering
@@ -238,12 +288,54 @@ Bei einem Durchlauf einer Spalte werden nun die Werte \glqq 0\grqq, \glqq 4\grqq
     \label{fig:shiftcolumn-2}
 \end{figure}
 
-Somit werden mit einer Rechnung pro C-Matrix 4 Einträge manipuliert. Für den gesamten \asm{TastaturBuffer} muss also die Multiplikation mit der C-Matrix insgesamt 16x angewendet werden.
+Somit werden mit einer Rechnung pro C-Matrix 4 Einträge manipuliert. Für den gesamten \asm{TastaturBuffer} muss also die Multiplikation mit der C-Matrix insgesamt 16x angewendet werden (4~Blöcke mit je 4~Spalten).
+
+Die Faktoren der C-Matrix sind 1, 2 und 3. Die Multiplikation mit 1 entfällt, die mit 2 übernimmt \asm{MalZweiPROC}, und die mit 3 wird als $a\cdot3=(a\cdot2)\oplus a$ zusammengesetzt. Die vier Produkte einer Zeile werden mit \asm{XOR} summiert (Addition in $\mathrm{GF}(2^8)$, Abschnitt~\ref{sec:gf}). Eine Zeile der Matrix ist im Quelltext als eigener Codeblock ausgeschrieben, die Ergebnisse der vier Zeilen werden zuerst in \asm{ShiftColumnZW2} gesammelt und erst danach zurückgeschrieben, damit die Spalte nicht schon während der Rechnung verändert wird.
+
+\textbf{Wichtig:} \asm{ShiftColumn} ist implementiert und im Python-Modell gegen die Referenz aus \cite{fips197} geprüft (die Spalte \hexo{DB} \hexo{13} \hexo{53} \hexo{45} ergibt \hexo{8E} \hexo{4D} \hexo{A1} \hexo{BC}), wird im \emph{aktiven} Ablauf aber \textbf{nicht aufgerufen} (Abschnitt~\ref{sec:ablauf-v}). Auch in der auskommentierten 10-Runden-Variante steht der Aufruf nur als Kommentar.
 
 \subsubsection{MalZweiProc (PROC)}
-Hier findet eine Fallunterscheidung statt, welche den Wert als größer 127 oder kleiner gleich 127 erkennt. Sollte er kleiner sein, so wird er durch ein \asm{SHL} (shift left = schiebe nach links) mit 2 multipliziert. Andernfalls wird eine XOR-Operation mit $283_{\text{dez}}$ durchgeführt und anschließend mal 2 gerechnet. Ein Aufruf dieser \asm{PROC} erfolgt über die \asm{ShiftColumn} an mehreren Stellen.
-% TODO v2.0.0: MalZweiPROC wurde korrigiert (SHL AL,1; bei Ueberlauf XOR 1Bh) und
-% um GFMulPROC (allgemeine GF(2^8)-Multiplikation) ergaenzt.
+Diese \asm{PROC} multipliziert das Byte in \asm{AL} mit 2 in $\mathrm{GF}(2^8)$ (Abschnitt~\ref{sec:gf}). Ein Aufruf dieser \asm{PROC} erfolgt über die \asm{ShiftColumn} an mehreren Stellen.
+
+\begin{lstlisting}[language=TASM,caption={\texttt{MalZweiPROC} (Version 2.0.0)},label={lst:malzwei}]
+MalZweiPROC PROC
+    SHL AL, 1        ; *2, das alte oberste Bit steht im Carry
+    JNC NichtZuGross ; kein Ueberlauf -> fertig
+    XOR AL, 1Bh      ; Ueberlauf -> mit Rest des Polynoms 11Bh reduzieren
+NichtZuGross:
+    RET
+MalZweiPROC ENDP
+\end{lstlisting}
+
+Die erste Fassung (Version~1.0) unterschied, ob der Wert größer 127 ist, und verknüpfte dann den Wert \emph{vor} dem Verdoppeln mit $283_{\text{dez}}=\hexo{11B}$ -- das ist falsch: Verdoppelt werden muss zuerst, und der Rest des Reduktionspolynoms ist \hexo{1B}, nicht \hexo{11B} (das Bit~8 ist schon aus dem Byte herausgefallen). Seit 2.0.0 (Commit \commit{75b5c2b}) ist die PROC wie in Listing~\ref{lst:malzwei}. Beispiel: $\hexo{DB}\cdot2$: \asm{SHL} ergibt \hexo{B6} mit gesetztem Carry, dann $\hexo{B6}\oplus\hexo{1B}=\hexo{AD}$.
+
+\subsubsection{GFMulPROC (PROC)}\label{sec:gfmulproc}
+\textbf{Neu in 2.0.0.} Für die inverse Spaltenrechnung werden die Faktoren \hexo{09}, \hexo{0B}, \hexo{0D} und \hexo{0E} benötigt. Statt für jeden eine eigene Kette von \asm{MalZweiPROC}-Aufrufen zu schreiben, multipliziert \asm{GFMulPROC} zwei beliebige Bytes: Eingabe \asm{AL} $=a$ und \asm{DL} $=b$, Ausgabe \asm{AL} $=a\cdot b$; alle anderen Register (auch \asm{DL}) bleiben erhalten.
+
+\begin{lstlisting}[language=TASM,caption={\texttt{GFMulPROC}: Schiebe-und-addiere},label={lst:gfmul}]
+GFMulPROC PROC
+    PUSH BX CX
+    MOV BL, AL         ; BL = laufender Faktor a, a*2, a*4, ...
+    MOV BH, DL         ; BH = restlicher Multiplikator b
+    MOV AL, 0          ; AL = Ergebnis
+    MOV CX, 8          ; 8 Bits
+GFMulSchritt:
+    TEST BH, 1
+    JZ GFMulKeinAdd
+    XOR AL, BL         ; Bit gesetzt -> Faktor aufaddieren (XOR)
+GFMulKeinAdd:
+    SHL BL, 1          ; Faktor verdoppeln ...
+    JNC GFMulKeinReduce
+    XOR BL, 1Bh        ; ... und ggf. reduzieren
+GFMulKeinReduce:
+    SHR BH, 1          ; naechstes Bit von b
+    LOOP GFMulSchritt
+    POP CX BX
+    RET
+GFMulPROC ENDP
+\end{lstlisting}
+
+Die Schleife läuft immer genau achtmal (\asm{LOOP} mit \asm{CX} $=8$). Das Schrittprotokoll für $\hexo{4D}\cdot\hexo{0B}=\hexo{89}$ steht in Tabelle~\ref{tab:gfmul}. Im Python-Modell wurden alle $256\cdot256=65\,536$ Eingabepaare gegen eine unabhängige Referenzmultiplikation geprüft.
 
 %------------------------------------------------------------------------------
 \subsection{ENTS.asm}
@@ -264,16 +356,12 @@ Aus der Grafik ist erkennbar, dass die erste Zeile keine Rotation zu verzeichnen
 
 Bei Zeile 3 wird eine 2fache Rotation durchgeführt. Somit stehen alle Einträge zwei Plätze weiter rechts. Auch hier werden die raus fallenden Inhalte von links wieder eingefügt, wie es bei einer Rotation definiert ist.
 
-Bei der letzten Zeile findet eine Verschiebung um 3 statt, damit jedes Verschiebemuster in den 4 Zeilen einmal stattgefunden hat.
+Bei der letzten Zeile findet eine Verschiebung um 3 statt, damit jedes Verschiebemuster in den 4 Zeilen einmal stattgefunden hat. Die Schleife läuft wie bei \asm{ShiftRow} über alle vier Blöcke (Abbruch bei \asm{CMP CX, 5}, seit 2.0.0; Abschnitt~\ref{sec:vers-shiftrow}). Es gilt $\mathrm{neu}[c]=\mathrm{alt}[(c-r)\bmod 4]$ -- die genaue Umkehrung von \asm{ShiftRow}.
 
 \subsubsection{ShiftColumn\_1 (PROC)}
-% TODO v2.0.0: ShiftColumn_1 wurde in Version 2.0.0 neu geschrieben (inverse
-% MixColumns mit InvMixMatrix). Der folgende Absatz beschreibt den Stand 1.x.
-Leider nicht funktionsfähig\ldots{}
-
-Hier soll die Verrechnung mit der inversen C-Matrix stattfinden:
+\textbf{In Version 1.0 nicht funktionsfähig, in Version 2.0.0 neu geschrieben} (Commit \commit{75b5c2b}). Hier findet die Verrechnung mit der inversen C-Matrix statt, die in der \asm{config.asm} als \asm{InvMixMatrix} (16 Bytes, zeilenweise) abgelegt ist:
 \[
-    \begin{pmatrix}
+    C^{-1}=\begin{pmatrix}
         \mathrm{E} & \mathrm{B} & \mathrm{D} & 9 \\
         9 & \mathrm{E} & \mathrm{B} & \mathrm{D} \\
         \mathrm{D} & 9 & \mathrm{E} & \mathrm{B} \\
@@ -281,7 +369,39 @@ Hier soll die Verrechnung mit der inversen C-Matrix stattfinden:
     \end{pmatrix}
 \]
 
-Wie schon bei der nicht inversen Variante wird eine einzelne (gedachte) Spalte mit einer Zeile der Matrix verrechnet. Die einzelnen Einträge werden multipliziert und diese dann zum Schluss durch ein \asm{XOR} logisch verknüpft.
+Wie schon bei der nicht inversen Variante wird eine einzelne (gedachte) Spalte mit einer Zeile der Matrix verrechnet. Die einzelnen Einträge werden multipliziert und diese dann zum Schluss durch ein \asm{XOR} logisch verknüpft. Die Multiplikation erledigt jetzt \asm{GFMulPROC} (Abschnitt~\ref{sec:gfmulproc}).
+
+\textbf{Aufbau.} Drei geschachtelte Schleifen; die Register haben feste Rollen:
+
+\begin{center}
+    \small
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        Register & Rolle \\
+        \midrule
+        \asm{BP} & Spaltennummer 0 bis 15 (alle vier Blöcke) \\
+        \asm{DI} & Index von Zeile~1 dieser Spalte: $16\cdot(\mathtt{BP}/4)+(\mathtt{BP}\bmod4)$ \\
+        \asm{SI} & $4\cdot{}$Matrixzeile (0, 4, 8, 12) \\
+        \asm{BX} & Matrixspalte 0 bis 3 \\
+        \asm{CH} & \asm{XOR}-Summe der vier Produkte \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+Zuerst werden die vier Eingabebytes der Spalte (\asm{TastaturBuffer[DI]}, \texttt{[DI+4]}, \texttt{[DI+8]}, \texttt{[DI+12]}) nach \asm{ShiftColumnZW2} gesichert. Dann berechnet die innere Schleife für jede Matrixzeile $\mathtt{CH}=\bigoplus_{\mathtt{BX}=0}^{3}\;\mathtt{ShiftColumnZW2[BX]}\cdot\mathtt{InvMixMatrix[SI+BX]}$ und schreibt das Ergebnis nach \asm{TastaturBuffer[DI+SI]}. Ohne die Sicherung würde die zweite Matrixzeile schon die bereits überschriebene erste Zeile der Spalte lesen.
+
+\begin{lstlisting}[language=TASM,caption={Kern von \texttt{ShiftColumn\_1}: Produkt einer Matrixzeile},label={lst:sc1}]
+InvProduktStart:
+    MOV AL, ShiftColumnZW2[BX]   ; Eingabewert der Matrixspalte BX
+    MOV DL, InvMixMatrix[SI+BX]  ; Faktor 09h/0Bh/0Dh/0Eh
+    CALL GFMulPROC               ; AL = AL * DL in GF(2^8)
+    XOR CH, AL                   ; aufsummieren
+    INC BX
+    CMP BX, 4
+    JL InvProduktStart
+\end{lstlisting}
+
+\textbf{Fehler in Version 1.0:} Die alte Fassung multiplizierte mit dem Prozessorbefehl \asm{MUL} (Ganzzahl-Multiplikation, Abschnitt~\ref{sec:gf}) statt in $\mathrm{GF}(2^8)$; das Ergebnis konnte deshalb nicht zur Vorwärtsrichtung passen, und die Dokumentation vermerkte die PROC als \glqq nicht funktionsfähig\grqq. \textbf{Prüfung:} Im Python-Modell gilt für 2000 Zufallszustände $\mathtt{ShiftColumn\_1}(\mathtt{ShiftColumn}(x))=x$, und die Spalte \hexo{8E} \hexo{4D} \hexo{A1} \hexo{BC} ergibt wieder \hexo{DB} \hexo{13} \hexo{53} \hexo{45}. Wie \asm{ShiftColumn} ist auch \asm{ShiftColumn\_1} im aktiven Ablauf \emph{nicht eingebunden}.
 
 %------------------------------------------------------------------------------
 \subsection{SBOX.asm}\label{sec:sbox}

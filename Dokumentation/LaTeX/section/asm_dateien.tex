@@ -160,33 +160,48 @@ In dieser Schlussrunde wird, dank dem symmetrischen Verfahren, lediglich der Run
 
 %------------------------------------------------------------------------------
 \subsection{VERS.asm}
-\subsubsection{SchluesselInitialisieren (PROC)}
-Die Funktion dieser \asm{PROC} ist einfach, da der gesamte, fest in der \asm{config.asm} implementierte, Standardschlüssel in den \asm{Rundenschluessel_Expand} kopiert wird. Somit bleibt der \asm{Rundenschluessel_Expand} bei einer nicht erfolgten Eingabe durch den Benutzer nicht leer. Ebenfalls wird die Rundenkonstante initialisiert mit dem Wert $5F_{\text{hex}}$.
+\subsubsection{SchluesselInitialisieren (PROC)}\label{sec:vers-schluessel}
+Die Funktion dieser \asm{PROC} ist einfach: Sie kopiert alle 64 Bytes aus \asm{Rundenschluessel_0} (Standardschlüssel oder eingegebener Schlüssel) nach \asm{Rundenschluessel_Expand} (\asm{MOV AL, Rundenschluessel_0[SI]}, \asm{MOV Rundenschluessel_Expand[SI], AL}, \asm{SI} von 0 bis 63) und setzt die Rundenkonstante \asm{Rundekonstante} auf den Startwert \asm{Konstante} $=$ \hexo{5F} zurück. Damit beginnt die Schlüsselfolge ($K_1, K_2,\ldots$) wieder beim Ausgangsschlüssel.
 
-\textbf{HINWEIS:} Bei der manuellen Eingabe eines Schlüssels oder Teilschlüssels, wird der jeweilige Bereich, wie weit die Eingabe reicht, überschrieben und somit der Benutzerwunschschlüssel verwendet.
+Aufgerufen wird sie an drei Stellen: in \asm{AES.asm} vor dem Einfügen von \asm{Ver\_Code.asm} bzw.\ \asm{Ent\_Code.asm}, \emph{nach} der Schlüsseleingabe (neu in 2.0.0, siehe Abschnitt~\ref{sec:aenderungen}) und mitten in \asm{Ablauf\_E.asm}, um nach den zwei Expansionen für $K_2$ wieder bei $K_0$ zu starten und $K_1$ zu erzeugen (Abschnitt~\ref{sec:ablauf-e}).
+
+\textbf{HINWEIS:} Bei der manuellen Eingabe eines Schlüssels oder Teilschlüssels wird in \asm{Rundenschluessel_0} der jeweilige Bereich, wie weit die Eingabe reicht, überschrieben. Der Rest bleibt der Standardschlüssel. Erst die Kopie in \asm{Rundenschluessel_Expand} macht den Wunschschlüssel für die Rechnung wirksam.
 
 \subsubsection{SchluesselAnwenden (PROC)}
-Mit dieser \asm{PROC} wird das Anwenden des Rundenschlüssels auf das Array im \asm{TastaturBuffer} beschrieben.
+Mit dieser \asm{PROC} wird das Anwenden des Rundenschlüssels auf das Array im \asm{TastaturBuffer} beschrieben. Es ist eine Schleife über \asm{DI} $=0\ldots63$, die jedes Byte des Zustands mit dem gleich indizierten Byte von \asm{Rundenschluessel_Expand} per \asm{XOR} verknüpft (\asm{MOV AL, TastaturBuffer[DI]}, \asm{MOV BL, Rundenschluessel_Expand[DI]}, \asm{XOR AL, BL}). Weil \asm{XOR} seine eigene Umkehrung ist ($a\oplus k\oplus k=a$), wird beim Entschlüsseln dieselbe PROC mit demselben Rundenschlüssel verwendet.
 
 \subsubsection{Schluesselexpansion (PROC)}
-Die Rundenschlüsselexpansion findet nach folgendem Muster statt:
+Die Rundenschlüsselexpansion berechnet aus dem aktuellen Schlüssel $k$ (in \asm{Rundenschluessel_Expand}) den nächsten Schlüssel $k'$ nach folgendem Muster:
 
 \begin{align*}
-    k_{\text{Runde}+1,\,0} &= k_{\text{Runde},\,0} \oplus \text{substituiert}\bigl(k_{\text{Runde},\,63}\bigr) \oplus \text{Rundenkonstante}\\
-    k_{\text{Runde}+1,\,j} &= k_{\text{Runde},\,j} \oplus k_{\text{Runde},\,j-1}
+    k'[0] &= k[0] \oplus S\bigl(k[63]\bigr) \oplus \mathrm{RC}\\
+    k'[j] &= k'[j-1] \oplus k[j] \qquad (j=1,\ldots,63)
 \end{align*}
 
 \begin{tabular}{@{\hspace{1.2cm}}l@{\hspace{3mm}}l}
-    Runde & $\Rightarrow$ Vorrunde (bei der 1. also Initialschlüssel) \\
-    $j$ & $\Rightarrow$ Index des Schlüssels (zw.\ 0 und 63) \\
+    $k$, $k'$ & $\Rightarrow$ Schlüssel vor bzw.\ nach der Expansion (64 Bytes) \\
+    $j$ & $\Rightarrow$ Index im Schlüssel (zw.\ 0 und 63) \\
+    $S(\cdot)$ & $\Rightarrow$ Substitution mit der S-Box (\asm{s_0}) \\
+    $\mathrm{RC}$ & $\Rightarrow$ Rundenkonstante (\asm{Rundekonstante}) \\
 \end{tabular}
 
-Jedoch bevor das Programm intern die 63 Schlüssel nach dem ersten Schlüssel durchläuft, wird noch die Rundenkonstante über ein \asm{ROL} (Rotate Left) ebenfalls expandiert.
+\textbf{Wichtig:} In der zweiten Zeile steht auf der rechten Seite das \emph{bereits neu berechnete} Byte $k'[j-1]$, nicht das alte $k[j-1]$. Das ergibt sich aus der Schleife: \asm{Rundenschluessel_Expand[DI-1]} wurde im vorigen Durchlauf schon überschrieben. Die erste Fassung der Dokumentation (und der Kommentar in \asm{VERS.asm}) gaben $k'[j]=k[j]\oplus k[j-1]$ an; das entspricht nicht dem Code. Ausgeschrieben ist $k'[j]=k'[0]\oplus k[1]\oplus\ldots\oplus k[j]$, also eine Präfix-\asm{XOR}-Summe. Diese Rechnung ist umkehrbar (das ist für die Entschlüsselung unwichtig, weil dort die Schlüssel nur wieder \emph{vorwärts} erzeugt werden).
+
+\textbf{Ablauf im Code.} (1) \asm{DL} $\leftarrow$ \asm{Rundekonstante}. (2) Das \emph{alte} letzte Schlüsselbyte \asm{Rundenschluessel_Expand[63]} wird nach \asm{BL}/\asm{DI} geladen und dient als Index in die S-Box: \asm{MOV CL, s_0[DI]}. (3) \asm{AL} $=k[0]$, dann \asm{XOR AL, CL}, \asm{XOR AL, DL}; das Ergebnis ist $k'[0]$. (4) Die Konstante wird mit \asm{ROL DL, 1} weitergedreht und zurückgeschrieben: \hexo{5F} $\to$ \hexo{BE} $\to$ \hexo{7D} $\to\ldots$ Rotieren statt Schieben, damit kein Bit verloren geht. (5) Schleife \asm{DI} $=1\ldots63$: \asm{AL} $\leftarrow k'[j-1]$, \asm{DL} $\leftarrow k[j]$, \asm{XOR AL, DL}, Ergebnis nach \asm{Rundenschluessel_Expand[DI]}.
+
+\textbf{Beispiel mit dem Standardschlüssel.} $k[0]=\hexo{51}$, $k[63]=\hexo{05}$, $S(\hexo{05})=\hexo{6B}$, $\mathrm{RC}=\hexo{5F}$:
+\[
+    k'[0]=\hexo{51}\oplus\hexo{6B}\oplus\hexo{5F}=\hexo{65},\quad
+    k'[1]=\hexo{65}\oplus k[1]\,(\hexo{DB})=\hexo{BE},\quad
+    k'[2]=\hexo{BE}\oplus\hexo{AD}=\hexo{13},\quad
+    k'[3]=\hexo{13}\oplus\hexo{CF}=\hexo{DC}.
+\]
+Die ersten Bytes von $K_1$ sind also \hexo{65} \hexo{BE} \hexo{13} \hexo{DC}; das letzte Byte $k'[63]$ ist \hexo{F1}.
 
 \subsubsection{SBOXSubstitution (PROC)}
-In dieser \asm{PROC} wird der gesamte \asm{TastaturBuffer} mithilfe der \asm{SBOX} substituiert. Wie die Substitution an sich abläuft, ist im Abschnitt~\ref{sec:sbox} \nameref{sec:sbox} beschrieben.
+In dieser \asm{PROC} wird der gesamte \asm{TastaturBuffer} (64 Bytes) mithilfe der \asm{SBOX} substituiert. Jedes Byte wird in \asm{AL} geholt, mit \asm{XOR AH, AH} auf 16~Bit erweitert und als Index nach \asm{DI} kopiert (ein 8-Bit-Register kann kein Index sein, Abschnitt~\ref{sec:register}); \asm{MOV AL, s_0[DI]} liest den neuen Wert, der an die gleiche Stelle zurückgeschrieben wird. Wie die Substitution an sich abläuft, ist im Abschnitt~\ref{sec:sbox} \nameref{sec:sbox} beschrieben. Dieselbe Tabelle \asm{s_0} wird auch in der Schlüsselexpansion benutzt.
 
-\subsubsection{ShiftRow (PROC)}
+\subsubsection{ShiftRow (PROC)}\label{sec:vers-shiftrow}
 Beim Aufruf dieser \asm{PROC} wird mit dem zeilenweisen Rotieren der Inhalte des \asm{TastaturBuffer}s begonnen. Dabei hat der Name hier Programm, da nach folgendem Muster das Durchrotieren stattfindet:
 
 \begin{figure}[!htbp]
@@ -196,11 +211,13 @@ Beim Aufruf dieser \asm{PROC} wird mit dem zeilenweisen Rotieren der Inhalte des
     \label{fig:shiftrow}
 \end{figure}
 
-Wie zu erkennen, wird die erste Zeile des Datensatzes nicht verändert. Der Block aus 16 Einheiten wird in vier gedachte Zeilen zerlegt. Die zweite Zeile dagegen bekommt eine Rotation einmal nach Links. Somit steht die Stelle 7 nun an der ehemaligen Stelle 4. Dadurch rückt diese (4) an die Stelle 5 und so weiter.
+Wie zu erkennen, wird die erste Zeile des Datensatzes nicht verändert. Der Block aus 16 Einheiten wird in vier gedachte Zeilen zerlegt (Tabelle~\ref{tab:zustand}). Die zweite Zeile bekommt eine Rotation einmal nach links: Der Inhalt von Stelle~4 steht danach an Stelle~7, alle anderen rücken um eine Stelle nach vorn (aus \asm{a04 a05 a06 a07} wird \asm{a05 a06 a07 a04}). Allgemein gilt für Zeile $r$ ($0\ldots3$) eines Blocks: $\mathrm{neu}[c]=\mathrm{alt}[(c+r)\bmod 4]$.
 
 Zeile 3 wird um 2 Stellen und die 4. Zeile um 3 Stellen rotiert. Dieses Muster wird 4x durchlaufen, da unser 64 Zeichen langer Text aus dem \asm{TastaturBuffer} in 4 Blöcke à 16 Einträge perfekt geteilt werden kann.
-% TODO v2.0.0: Der ShiftRow-Fix (CMP CX, 5) sorgt dafuer, dass tatsaechlich alle
-% vier Bloecke bearbeitet werden (vorher nur drei).
+
+\textbf{Technik.} \asm{CX} zählt die Blöcke (nach dem \asm{INC CX} steht im ersten Block 1), \asm{SI} läuft über die Einträge, \asm{DI} zählt die Zeile im Block (0, 1, 2), \asm{BX} ist der Rückwärtsversatz, mit dem die vier Bytes einer Zeile nach \asm{ShiftZwSpeicher} gerettet werden, bevor sie in rotierter Reihenfolge zurückgeschrieben werden (Zeile~0 entfällt, sie wird nicht gedreht). Die Abbruchprüfung am Blockanfang lautet \asm{CMP CX, 5}: Erst wenn \asm{CX} $=5$ ist, waren die Blöcke 1 bis 4 an der Reihe.
+
+\textbf{Fehler in Version 1.0.} Die Prüfung lautete früher \asm{CMP CX, 4}, sodass nur drei Blöcke bearbeitet wurden und die Bytes 48 bis 63 unverschoben blieben. Das gleiche galt für \asm{ShiftRow_1}. Seit 2.0.0 (Commit \commit{1990683}) werden alle vier Blöcke bearbeitet. Das Ergebnis wurde im Python-Modell gegen $\mathrm{neu}[c]=\mathrm{alt}[(c+r)\bmod 4]$ geprüft.
 
 \subsubsection{ShiftColumn (PROC)}
 Diese \asm{PROC} setzt das Spaltenrechnen von AES um. Dabei wird mithilfe der C-Matrix eine Verrechnung der einzelnen Spalten vorgenommen, da man sich hier wieder die Blöcke aus 16 Einträgen vorstellen muss. Nachfolgende Grafik soll dies zeigen:
@@ -272,7 +289,13 @@ In dieser asm-Datei werden zwei elementare Arrays angelegt. Das Erste beinhaltet
 
 Das Grundprinzip in der Anwendung einer \asm{SBOX} besteht daraus, dass mithilfe des zu wechselnden Wertes die Stelle im Array ermittelt wird, wo der neue (substituierte) Wert dann herausgenommen wird.
 
-Als Beispiel wäre die Eingabe $36_{\text{hex}}$ gegeben. Dies entspricht dem dezimal Wert $54_{\text{dez}}$ und verweist somit auf die 54.\ Stelle im Array, also dem Index $53_{\text{dez}}$ des Arrays. An dieser Stelle befindet sich der vordefinierte Wert $102_{\text{dez}}$ -- was $66_{\text{hex}}$ entspricht. Bei der Substitution wird nun dieser Wert ($66_{\text{hex}}$) mit dem vorherigen Wert ($36_{\text{hex}}$) ersetzt.
+Als Beispiel wäre die Eingabe \hexo{36} gegeben. Dies entspricht dem dezimal Wert $54_{\text{dez}}$ und verweist somit auf die 55.\ Stelle im Array, also auf den Index $54_{\text{dez}}$ (die Zählung beginnt bei 0, der Index ist also \emph{gleich} dem Eingabewert). An dieser Stelle befindet sich der vordefinierte Wert \hexo{05}. Bei der Substitution wird nun \hexo{36} durch \hexo{05} ersetzt. Dasselbe Prinzip gilt für Buchstaben: \glqq H\grqq{} ist \hexo{48} und wird zu \hexo{52} (Beispiel in Kapitel~\ref{sec:ablauf-beispiel}).
+
+In der ersten Fassung der Dokumentation stand an dieser Stelle fälschlich das Ergebnis \hexo{66}; die S-Box des Programms liefert für \hexo{36} den Wert \hexo{05}, wie in \cite{fips197} gefordert.
+
+Die Inverse leistet die Umkehrung: Für \hexo{05} liefert sie wieder \hexo{36}. Die beiden Arrays heißen \asm{s_0} (S-Box) und \asm{s_1_0} (inverse S-Box).
+
+\textbf{Korrektur in Version 2.0.0.} In der \emph{inversen} S-Box \asm{s_1_0} stand im Eintrag für den Index \hexo{70} durch einen Tippfehler \asm{0Dh} statt \asm{0D0h}. Die Entschlüsselung lieferte deshalb für jedes Byte \hexo{70} im Zwischenzustand \hexo{0D} statt \hexo{D0}; die Tabelle hatte weiter 256 Einträge, es gab also keinen Assembler- und keinen Laufzeitfehler. Der Wert wurde berichtigt (Commit \commit{53d8c75}); beide Tabellen wurden danach gegen die AES-S-Box aus \cite{fips197} geprüft und stimmen in allen 256 Einträgen überein.
 
 Bei der inversen \asm{SBOX} erfolgt dieses Ersetzen der Werte genau nach dem selben Schema.
 

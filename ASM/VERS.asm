@@ -13,6 +13,7 @@
 ;         - ShiftRow
 ;         - ShiftColumn
 ;         - MalZweiPROC
+;         - GFMulPROC
 ;===========================================================================
 
 
@@ -406,16 +407,58 @@ ShiftColumn ENDP
 ; Anpassungen (wie die XOR 283 z.B.) erforderlich/gewuenscht sein.
 
 ; Rueckgabe erfolgt ueber AL
+;
+; Multiplikation mit 2 im Koerper GF(2^8) (Reduktionspolynom x^8+x^4+x^3+x+1 = 11Bh):
+;     a * 2 = a << 1                 falls das hoechste Bit von a 0 ist
+;     a * 2 = (a << 1) XOR 1Bh       falls das hoechste Bit von a 1 ist
+; Das hoechste Bit wird von SHL ins Carry-Flag geschoben - daran wird entschieden. Das
+; Ergebnis aus 8 Bit bleibt dadurch immer ein Bytewert (die 1 an Bit 8 aus 11Bh ist schon weg).
+;
+; Frueher: CMP AL, 127 / JNG ... / XOR AX, 283 / SHL AL, 1. Das war doppelt falsch:
+;   - JNG ist ein VORZEICHENBEHAFTETER Vergleich. Fuer jedes Byte (auch 80h..FFh = negativ)
+;     gilt "AL <= 127", der Sprung wurde also immer genommen und die Reduktion nie ausgefuehrt.
+;   - Die Reduktion muss NACH dem Verschieben erfolgen (a<<1 XOR 1Bh), nicht davor (a XOR 11Bh).
+;     Zusaetzlich hat XOR AX die Hochbyte-Haelfte AH veraendert, in der die Aufrufer Werte halten.
+; Fuer ASCII-Text (alle Bytes < 80h) fiel das nicht auf; mit S-Box-Werten ergab es falsche Spalten.
 MalZweiPROC PROC
-        PUSH BP               ; Sicher ist sicher
-        CMP AL, 127           ; Vergleicht den Wert aus dem TastaturBuffer (steht in AL) mit 127
-        JNG NichtZuGross      ; falls kleiner, direkt zum *2, sonst
-        XOR AX, 283           ; erstmal noch mit 283(dez) XOR verrechnen
+        SHL AL, 1             ; *2 ; das alte hoechste Bit steht jetzt im Carry-Flag (CF)
+        JNC NichtZuGross      ; CF = 0 -> kein Ueberlauf aus 8 Bit, nichts zu reduzieren
+        XOR AL, 1Bh           ; CF = 1 -> modulo Polynom reduzieren
 
 NichtZuGross:
-        SHL AL, 1             ; *2
-
-EndeMalZweiPROC:
-        POP BP                ; Sicher ist sicher
         RET
 MalZweiPROC ENDP
+
+; Allgemeine Multiplikation zweier Bytes im Koerper GF(2^8) (Reduktionspolynom 11Bh):
+;     Eingabe:   AL = Faktor a, DL = Faktor b (z. B. 09h, 0Bh, 0Dh oder 0Eh fuer InvMixColumns)
+;     Ausgabe:   AL = a * b in GF(2^8)      (alle anderen Register bleiben erhalten, auch DL)
+; Verfahren (Schiebe-und-Addiere, "Russian peasant"): Fuer jedes der 8 Bits von b (von rechts)
+;     - ist das Bit gesetzt, wird der aktuelle Wert von a (a, 2a, 4a, ...) ins Ergebnis addiert;
+;       die Addition in GF(2^8) ist XOR
+;     - danach wird a mit 2 multipliziert (SHL, bei Ueberlauf XOR 1Bh, siehe MalZweiPROC)
+; Die gewoehnliche Ganzzahl-Multiplikation (MUL) darf dafuer NICHT verwendet werden:
+; es gilt z. B. 0Eh * 80h = 700h (Ganzzahl, Low-Byte 00h), aber 0Eh * 80h = 41h in GF(2^8).
+GFMulPROC PROC
+        PUSH BX CX            ; Sicher ist sicher
+        MOV BL, AL            ; BL = laufender Faktor a  (a, 2a, 4a, ...)
+        MOV BH, DL            ; BH = Multiplikator b, wird pro Schritt um 1 Bit nach rechts geschoben
+        MOV AL, 0             ; AL = Ergebnis
+        MOV CX, 8             ; 8 Bits von b
+
+GFMulSchritt:
+        TEST BH, 1            ; niederwertigstes Bit von b gesetzt?
+        JZ GFMulKeinAdd
+        XOR AL, BL            ; ja -> aktuellen Wert von a addieren (XOR)
+
+GFMulKeinAdd:
+        SHL BL, 1             ; a * 2, hoechstes Bit landet im Carry-Flag
+        JNC GFMulKeinReduce
+        XOR BL, 1Bh           ; Ueberlauf -> reduzieren
+
+GFMulKeinReduce:
+        SHR BH, 1             ; naechstes Bit von b
+        LOOP GFMulSchritt     ; CX = CX - 1, wiederholen solange CX <> 0
+
+        POP CX BX
+        RET
+GFMulPROC ENDP

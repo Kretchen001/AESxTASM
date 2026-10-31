@@ -1,10 +1,9 @@
-% Ehemals AES.pdf, Kapitel 2
-% Hinweis: Stellen, die durch Version 2.0.0 (S-Box-Korrektur, ShiftRow,
-% eigener Schluessel, MixColumns + Inverse) inhaltlich ueberholt sind, sind mit
-% "% TODO v2.0.0" markiert. Der Text entspricht sonst dem urspruenglichen PDF.
+% Kapitel 3 -- Die ASM-Dateien (Stand: Version 2.0.0)
+% Offene Stellen aus der Ueberarbeitung sind noch mit "% TODO v2.0.0" markiert
+% und werden in den folgenden Commits abgearbeitet.
 \section{Die ASM-Dateien und ihr Inhalt}\label{sec:asm-dateien}
 
-\textbf{HINWEIS:} Zu jeder Datei findet hier eine kurze Beschreibung statt. Meist ist jedoch die genauere Erklärung im Quelltext als Kommentar hinter den jeweiligen Befehlszeilen zu finden. Zusätzlich gibt es im Kopf jeder Datei eine Beschreibung, die diesem Werk ähnelt. Es soll lediglich dazu dienen, diese Kopf-Kommentare zu erweitern, noch besser zu strukturieren und einen allgemeinen Überblick zu erhalten.
+\textbf{HINWEIS:} Begriffe wie \emph{Zustand}, $\mathrm{GF}(2^8)$ und die Rollen der Register sind in Kapitel~\ref{sec:grundlagen} erklärt. Zu jeder Datei findet hier eine Beschreibung statt. Meist ist jedoch die genauere Erklärung im Quelltext als Kommentar hinter den jeweiligen Befehlszeilen zu finden. Zusätzlich gibt es im Kopf jeder Datei eine Beschreibung, die diesem Werk ähnelt. Es soll lediglich dazu dienen, diese Kopf-Kommentare zu erweitern, noch besser zu strukturieren und einen allgemeinen Überblick zu erhalten.
 
 %------------------------------------------------------------------------------
 \subsection{Grafische Übersicht über alle ASM-Dateien}
@@ -29,14 +28,17 @@ Hier sind alle ASM-Dateien aufgeführt. Gleichzeitig soll das Zusammenspiel der 
 Hier findet die grundlegende Verwaltung des Ablaufes statt. Diese Datei kann man auch als \asm{main} bezeichnen. Im Folgenden wird auf die einzelnen Label und ihre Funktionalitäten näher eingegangen.
 
 \subsubsection{Beginn (Label)}
-Laden des Data-Segmentes in \asm{DS}. Im Data-Segment sind 2 \asm{INCLUDE}s vorhanden:
+Das Programm ist im \asm{SMALL}-Modell mit \asm{.486} und einem Stack von \asm{100h} Bytes geschrieben. \asm{DS} muss beim Start selbst auf das Datensegment gesetzt werden (\asm{MOV AX, @DATA}, \asm{MOV DS, AX}); ohne diese beiden Zeilen würden alle Variablenzugriffe ins Leere gehen.
+
+Ein \asm{INCLUDE} wird vom Assembler beim Übersetzen durch den Text der Datei ersetzt; die Dateien sind also kein getrennt gebundener Code, sondern teilen sich ein Segment. Im Data-Segment sind 2 \asm{INCLUDE}s vorhanden:
 \begin{enumerate}[label=\arabic*,noitemsep]
     \item \asm{SBOX.asm}
     \item \asm{config.asm}
 \end{enumerate}
+Im Code-Segment folgen \asm{ISR.asm}, \asm{BildPROC.asm}, \asm{MAUS.asm}, \asm{VERS.asm} und \asm{ENTS.asm} (sämtliche \asm{PROC}s); die Dateien \asm{Ver\_Code.asm}, \asm{Ent\_Code.asm} (und über diese \asm{Ablauf\_V.asm} bzw.\ \asm{Ablauf\_E.asm}) werden erst weiter unten an der Stelle ihres Einsatzes eingefügt.
 
 \subsubsection{Hauptbildschirm darstellen (Label)}
-Wie der Name schon erwarten lässt, wird hier der Hauptbildschirm gezeichnet. Dies geschieht über den Aufruf einer \asm{PROC} \asm{HauptbildschirmProc}. Davor wird jedoch ebenfalls noch in diesem Label die Maus-Klick-Funktion belegt. Dies geschieht durch das Freisetzen der beiden Primärmaustasten links und rechts, sowie dem Definieren des \asm{OFFSET}s der \asm{PROC} \asm{MausPosiProc}.
+Wie der Name schon erwarten lässt, wird hier der Hauptbildschirm gezeichnet. Dies geschieht über den Aufruf einer \asm{PROC} \asm{HauptbildschirmProc}. Davor wird jedoch ebenfalls noch in diesem Label die Maus-Klick-Funktion belegt. Dies geschieht mit \asm{INT 33h}, Funktion \asm{0Ch}: \asm{CX} enthält die Ereignismaske (\asm{00000110b}: Bit~1 linke Taste gedrückt, Bit~2 linke Taste losgelassen), \asm{ES:DX} zeigt auf die Ereignisroutine. Dazu wird \asm{CS} nach \asm{ES} kopiert (\asm{PUSH CS}, \asm{POP ES}) und \asm{DX} mit \asm{OFFSET MausPosiProc} geladen. Die Anmeldung steht hinter dem Label \asm{HauptbildschirmDarstellen}, damit sie nach jedem Rücksprung vom Ver-/Entschlüsselungsbildschirm erneut erfolgt (die Maus wird dort zurückgesetzt).
 
 \subsubsection{Endlosschleife (Label)}
 In der Endlosschleife wird auf einen Tastaturdruck gewartet (\asm{INT 16h}, Unterfunktion \asm{1h}). Nachdem dieser erfolgt ist, folgt ein \asm{CMP} mit dem Ziel, die ESC-Taste zu detektieren. Bei einer Übereinstimmung springt das Programm zu dem \asm{ESCEnde} (Label). Andernfalls wird eine Überprüfung des Inhalts der Variable \asm{bool_Ent_Ver} vorgenommen. Hier können 3 Fälle eintreten.
@@ -50,10 +52,10 @@ In der Endlosschleife wird auf einen Tastaturdruck gewartet (\asm{INT 16h}, Unte
 \end{center}
 
 \subsubsection{VerschluesselungBeginn (Label)}
-Hier wird über ein \asm{INCLUDE} der Code für das Verschlüsseln aus der \asm{Ver_Code.asm} eingefügt und durchlaufen. Nach dessen Abschluss wird die Variable \asm{bool_Ent_Ver} wieder auf 3 gesetzt, also in den Wartezustand überführt. Als letzte Handlung folgt ein \asm{JMP} zum \asm{HauptbildschirmDarstellen} (Label).
+Zunächst wird \asm{SchluesselInitialisieren} aufgerufen (Standardschlüssel nach \asm{Rundenschluessel_Expand}). Dann wird über ein \asm{INCLUDE} der Code für das Verschlüsseln aus der \asm{Ver_Code.asm} eingefügt und durchlaufen; weil die Datei dort im Fluss steht, gibt es kein \asm{CALL}/\asm{RET}, der Ablauf läuft einfach weiter. Nach dessen Abschluss wird die Variable \asm{bool_Ent_Ver} wieder auf 3 gesetzt, also in den Wartezustand überführt. Als letzte Handlung folgt ein \asm{JMP} zum \asm{HauptbildschirmDarstellen} (Label).
 
 \subsubsection{EntschluesselungBeginn (Label)}
-Hier wird über ein \asm{INCLUDE} der Code für das Entschlüsseln aus der \asm{Ent_Code.asm} eingefügt und durchlaufen. Nach dessen Abschluss wird die Variable \asm{bool_Ent_Ver} wieder auf 3 gesetzt, also in den Wartezustand überführt. Als letzte Handlung folgt hier ebenfalls ein \asm{JMP} zum \asm{HauptbildschirmDarstellen} (Label).
+Wie bei der Verschlüsselung folgt zuerst \asm{SchluesselInitialisieren}, dann das \asm{INCLUDE} des Codes für das Entschlüsseln aus der \asm{Ent_Code.asm}. Nach dessen Abschluss wird die Variable \asm{bool_Ent_Ver} wieder auf 3 gesetzt, also in den Wartezustand überführt. Als letzte Handlung folgt hier ebenfalls ein \asm{JMP} zum \asm{HauptbildschirmDarstellen} (Label).
 
 \subsubsection{ESCEnde (Label)}
 In diesem Programmteil wird eine Überprüfung der Variable \asm{bool_Ent_Ver} auf den Wert 3 vorgenommen. Sollte eine Übereinstimmung vorliegen, so wird der Sprung (\asm{JMP}) zum \asm{Ende} (Label) vorgenommen, andernfalls springt das Programm zum \asm{HauptbildschirmDarstellen} (Label). Somit wird ein ungewolltes Verlassen aus dem Ent- bzw. Verschlüsselungsbildschirm verhindert.
@@ -68,7 +70,7 @@ INT 21h
 
 %------------------------------------------------------------------------------
 \subsection{MAUS.asm}
-\subsubsection{MausPosiProc (PROC)}
+\subsubsection{MausPosiProc (PROC)}\label{sec:mausposiproc}
 In dieser \asm{PROC} wird überprüft, wo sich der Mauszeiger beim Klicken befand. Je nach Ergebnis wird dann ein anderer Bildschirm angezeigt. Dabei gibt es drei Fälle:
 
 \begin{enumerate}[label=\arabic*,noitemsep]
@@ -77,7 +79,9 @@ In dieser \asm{PROC} wird überprüft, wo sich der Mauszeiger beim Klicken befan
     \item Verschlüsseln getroffen
 \end{enumerate}
 
-Der simpelste Fall ist die Nummer 1. Hier wird einfach nichts getan, außer den Zustandsspeicher \asm{bool_Ent_Ver} auf 3 zu setzen, was als \glqq nichts zu tun\grqq{} interpretiert wird. Fall 2 setzt diese Variable jedoch auf 1 (entspricht Entschlüsselung) und zeichnet anschließend den \asm{Hauptbildschirm2}. Dieser beinhaltet die Flächen für die Text- und Schlüsseleingabe. Sollte jedoch kein oder ein nur unvollständiger Schlüssel eingegeben werden, so wird automatisch der vordefinierte Schlüssel aus der \asm{config.asm} für den weiteren Ablauf verwendet.
+Der simpelste Fall ist die Nummer 1. Hier wird einfach nichts getan, außer den Zustandsspeicher \asm{bool_Ent_Ver} auf 3 zu setzen, was als \glqq nichts zu tun\grqq{} interpretiert wird. Fall 2 setzt diese Variable jedoch auf 1 (entspricht Entschlüsselung), setzt \asm{BildschirmVar} auf 2 und zeichnet über \asm{BildschirmProcX} den \asm{Hauptbildschirm2}. Dieser beinhaltet die Flächen für die Text- und Schlüsseleingabe. Fall 3 verläuft genauso, mit \asm{bool_Ent_Ver} $=2$, \asm{BildschirmVar} $=3$ und dem \asm{Hauptbildschirm3} (Verschlüsseln-Eingabe). Die PROC selbst fasst den Schlüssel \emph{nicht} an; welcher Schlüssel verwendet wird, entscheidet sich erst in \asm{Ver_Code.asm} bzw.\ \asm{Ent_Code.asm} (siehe unten). Ein unvollständig oder gar nicht eingegebener Schlüssel wird mit dem Standardschlüssel aus der \asm{config.asm} aufgefüllt.
+
+\textbf{Technische Einordnung:} Die PROC wird nicht aufgerufen, sondern vom Maustreiber als \emph{Ereignisroutine} (\asm{INT 33h}, Funktion \asm{0Ch}, Maske \asm{00000110b} $=$ linke Taste gedrückt/losgelassen) angesprungen, deshalb ist sie \asm{FAR} und beginnt mit \asm{ENTER 0, 0} bzw.\ endet mit \asm{LEAVE} und \asm{RET}. Der Treiber übergibt die Position in \asm{CX} (x, $0\ldots639$) und \asm{DX} (y, $0\ldots199$). Die PROC rechnet beide in einen Videospeicher-Offset um: \asm{SHR DX, 3} teilt y durch 8 (Textzeile), \asm{IMUL DX, 160} macht daraus den Zeilenanfang; \asm{SHR CX, 2} teilt x durch 4, was ungefähr $2\cdot(x/8)$, also dem Byte-Offset der Spalte, entspricht (Formel aus Abschnitt~\ref{sec:video}). Beide Werte werden addiert und in einer Kette von Vergleichen (\asm{Runde1} bis \asm{Runde6}) gegen die Bereichsvariablen der \asm{config.asm} geprüft.
 
 Auf der folgenden Seite ist der Ablauf der Feststellung, ob und welche Schaltfläche getroffen wurde, graphisch dargestellt.
 
@@ -90,17 +94,27 @@ Auf der folgenden Seite ist der Ablauf der Feststellung, ob und welche Schaltfl�
 
 %------------------------------------------------------------------------------
 \subsection{Ver\_Code.asm}
-Nachdem der Bildschirm zum Verschlüsseln aufgerufen wurde, ist hier der Ablauf von Klartext-Eingabe, Schlüssel in Hex-Werten und chiffrierter Textausgabe (ebenfalls in Hex-Werten) definiert. Die Klartextlänge ist auf 64 Zeichen und die Schlüssellänge auf 128 Zeichen beschränkt. 2 Eingaben beim Schlüssel erzeugen einen internen Hex-Wert.
+Nachdem der Bildschirm zum Verschlüsseln aufgerufen wurde, ist hier der Ablauf von Klartext-Eingabe, Schlüssel in Hex-Werten und chiffrierter Textausgabe (ebenfalls in Hex-Werten) definiert. Die Datei wird per \asm{INCLUDE} in \asm{AES.asm} eingefügt, ist also kein Unterprogramm, sondern läuft im Hauptprogramm ab.
 
-Durch einen \asm{INCLUDE} von der \asm{Ablauf_V.asm}, in der die Struktur der Verschlüsselung beschrieben ist, wird in diesem Programmteil die interne Verschlüsselung an sich aufgerufen.
+\textbf{Vorbereitung.} Als Erstes wird die Maus mit \asm{INT 33h}, Funktion \asm{0}, zurückgesetzt (der Treiber wird auf den Ausgangszustand gesetzt, der Zeiger verschwindet); sie wird am Ende wieder eingeschaltet und in \asm{AES.asm} neu angemeldet. \asm{DI} erhält den Anfang des Eingabefeldes (\asm{1936}, Abschnitt~\ref{sec:video}), \asm{SI} zählt die Zeichen im \asm{TastaturBuffer}.
+
+\textbf{Klartext-Eingabe.} In einer Schleife wartet \asm{INT 16h} (Funktion \asm{0}, blockierend) auf eine Taste. \asm{ESC} bricht ab, \asm{Enter} beendet die Eingabe. Jede andere Taste wird als Zeichen übernommen: Der ASCII-Wert wird zusammen mit dem Attribut \asm{0Fh} als ein Wort an die Bildschirmposition geschrieben (\asm{MOV WORD PTR ES:[DI], AX}) und zusätzlich im \asm{TastaturBuffer} sowie in \asm{TastaturBufferOrg} abgelegt. \asm{DI} wächst dabei um 2, \asm{SI} um 1. Die Grenze \asm{DI} $>$ \asm{2062} begrenzt den Klartext auf $(2062-1936)/2+1=64$ Zeichen; weitere Zeichen werden bis zum \asm{Enter} ignoriert.
+
+\textbf{Schlüssel-Eingabe.} Nach dem \asm{Enter} folgt die Schlüsseleingabe in zwei Zeilen zu je 64 Hexziffern, beginnend bei Offset \asm{2576} (Bildschirmzeile 16) und \asm{2736} (Zeile 17). Zugelassen sind nur \asm{0}--\asm{9} und \asm{A}--\asm{F} (Großbuchstaben); alle anderen Tasten, auch Kleinbuchstaben, werden verworfen. Zwei Ziffern ergeben ein Byte: Die erste Ziffer wird in einen Wert $0\ldots15$ umgerechnet (\asm{SUB AL, 48}, bei Buchstaben zusätzlich \asm{SUB AL, 7}) und in \asm{DL} zwischengespeichert, bei der zweiten gilt $\mathtt{Byte}=16\cdot\mathtt{DL}+\mathtt{AL}$ (\asm{SHL DL, 4}, \asm{ADD AL, DL}). Das Byte wird in \asm{Rundenschluessel\_0[SI]} geschrieben. Insgesamt sind also $2\cdot64=128$ Ziffern bzw.\ 64 Schlüsselbytes möglich. \asm{Enter} beendet die Eingabe vorzeitig; die restlichen Bytes behalten den Wert des Standardschlüssels, eine begonnene, aber nicht vollständige Ziffer wird verworfen.
+
+\textbf{Korrekturen in Version 2.0.0} (Details in Kapitel~\ref{sec:aenderungen}): Vor der Schlüsseleingabe werden jetzt \asm{SI}, \asm{CL} und \asm{DL} auf~0 gesetzt -- vorher schrieb der Schlüssel ab dem Index der Klartextlänge (bei 64 Zeichen sogar hinter das Array) und das erste Byte wurde aus einem alten \asm{DL} zusammengesetzt. In der zweiten Schlüsselzeile fehlte \asm{SUB AL, 48}, wodurch alle Bytes der Zeile um \hexo{30} zu groß waren. Die Eingabe schreibt in \asm{Rundenschluessel\_0}; gerechnet wird aber mit \asm{Rundenschluessel\_Expand}. In Version~1.0 wurde \asm{SchluesselInitialisieren} (das Kopieren von \asm{\_0} nach \asm{\_Expand}) nur \emph{vor} der Eingabe aufgerufen, sodass \asm{Rundenschluessel\_Expand} immer den Standardschlüssel enthielt und ein eigener Schlüssel nie in die Rechnung einging. Seit 2.0.0 ruft \asm{AufrufenVerAusASM} die PROC zusätzlich \emph{nach} der Eingabe auf.
+
+\textbf{Verschlüsselung und Ausgabe.} Danach wird per \asm{INCLUDE} der Ablauf aus \asm{Ablauf\_V.asm} (Abschnitt~\ref{sec:ablauf-v}) eingefügt. Anschließend setzt \asm{ErgebnisAusgabeVer} \asm{BildschirmVar} auf 4, zeichnet den Ergebnisbildschirm, schreibt den Klartext aus \asm{TastaturBufferOrg} (64 Zeichen ab Offset \asm{1936}) und gibt die 64 Bytes des \asm{TastaturBuffer} als 128 Hexziffern in zwei Zeilen (ab \asm{2576} und \asm{2736}) aus. Jedes Byte wird dazu in zwei Nibbles zerlegt (\asm{SHR AL, 4} für das obere; für das untere wird das obere abgezogen) und mit \asm{ADD AL, 48} (bei Werten $>9$ zuvor \asm{ADD AL, 7}) in ASCII gewandelt. Die weiteren Vergleichsketten im Quelltext (\asm{CMP AL, 79} usw.) werden nie erreicht, da das Ergebnis nach \asm{ADD AL, 7} höchstens 22 ist. \asm{ESC} (Schleife \asm{WarteschleifeVer}) beendet die Anzeige. \asm{ReturnVersch} leert beide Puffer (\asm{DI} von 0 bis einschließlich 64, daher 65~Bytes) und schaltet die Maus wieder ein (\asm{INT 33h}, Funktion \asm{1}).
 
 %------------------------------------------------------------------------------
 \subsection{Ent\_Code.asm}
 Nachdem der Bildschirm zum Entschlüsseln über die dafür existierende \asm{PROC} (siehe Absatz~\ref{sec:bildschirmprocx} \nameref{sec:bildschirmprocx}) gezeichnet wurde, kommt es hier ebenfalls zu einer Eingabe. Dieses Mal erfolgt die Texteingabe wegen des zu entschlüsselnden Zeichensatzes über hexadezimale Werte. Erlaubt sind dabei 0 bis 9 und A bis F. Nur Großbuchstaben werden akzeptiert.
 
-Nach dem selben Muster erfolgt auch die Eingabe für den Schlüssel. Die Schlüsseleingabe wird den Standardschlüssel (welcher fest integriert ist) soweit überschreiben, wie diese Eingabe erfolgt. Es können wieder maximal 128 Zeichen eingegeben werden. 2 Eingaben erzeugen einen internen Hex-Wert.
+\textbf{Texteingabe.} Der Chiffretext hat immer 64 Bytes (Abschnitt~\ref{sec:einschraenkungen}) und wird daher in zwei Zeilen zu je 64 Hexziffern eingegeben: Zeile~1 bei Offset \asm{1936} (bis \asm{2062}), Zeile~2 bei \asm{2096} (bis \asm{2222}). Beim Überschreiten von \asm{2062} springt \asm{DI} über das Label \asm{DIUmstellen} auf \asm{2096}. Zwei Ziffern bilden ein Byte: Die erste wird mit \asm{SHL DL, 4} nach oben geschoben; von der zweiten wird mit \asm{SHL AL, 4} und \asm{SHR AL, 4} das obere Nibble entfernt (Maskierung), die Summe \asm{AL + DL} wird in \asm{TastaturBuffer} und \asm{TastaturBufferOrg} abgelegt. \asm{CL} zählt dabei, ob es die erste oder zweite Ziffer ist.
 
-Vor der Ausgabe des Klartextes wird in diesem Programmabschnitt ähnlich der \asm{Ver_Code.asm} ein \asm{INCLUDE} durchgeführt, welcher den Ablauf der Entschlüsselung aus der \asm{Ablauf_E.asm} aufruft.
+Nach dem selben Muster erfolgt auch die Eingabe für den Schlüssel, hier in den Zeilen bei \asm{2736} und \asm{2896} (je 64 Ziffern). Die Schlüsseleingabe schreibt in \asm{Rundenschluessel\_0} und überschreibt den Standardschlüssel (welcher fest integriert ist) damit so weit, wie die Eingabe erfolgt. Es können wieder maximal 128 Zeichen eingegeben werden. 2 Eingaben erzeugen einen internen Hex-Wert. Wie bei der Verschlüsselung werden \asm{SI} und \asm{CL} vor der ersten Schlüsselziffer auf 0 gesetzt (Version 2.0.0).
+
+Bei \asm{AufrufenEntAusASM} wird erst \emph{nach} der Eingabe \asm{SchluesselInitialisieren} aufgerufen, sodass \asm{Rundenschluessel\_Expand} den eingegebenen Schlüssel enthält und die Rundenkonstante wieder bei \hexo{5F} startet. Danach wird per \asm{INCLUDE} der Ablauf der Entschlüsselung aus der \asm{Ablauf\_E.asm} (Abschnitt~\ref{sec:ablauf-e}) eingefügt. Die Ausgabe (\asm{BildschirmVar} $=5$) schreibt die 64 Bytes des \asm{TastaturBuffer} \emph{unverändert als ASCII-Zeichen} (je ein Wort mit Attribut \asm{0Fh}) ab Offset \asm{1936}; Bytes mit Wert \asm{00h} erscheinen als Leerstellen. \asm{ESC} beendet die Anzeige, \asm{ReturnEntsch} leert die Puffer und schaltet die Maus wieder ein.
 
 %------------------------------------------------------------------------------
 \subsection{Ablauf\_V.asm}
@@ -266,6 +280,8 @@ Bei der inversen \asm{SBOX} erfolgt dieses Ersetzen der Werte genau nach dem sel
 \subsection{config.asm}
 In dieser Datei finden sich alle Variablen. Aufgelistet wären das:
 
+\emph{Zu den zwölf Bereichsvariablen \asm{EntR1_L} bis \asm{VerR3_R}:} Sie sind die Klickbereiche der beiden Schaltflächen auf dem Hauptbildschirm, angegeben in der Einheit, in die \asm{MausPosiProc} die Mauskoordinate umrechnet: $\mathtt{CX}/4+160\cdot(\mathtt{DX}/8)$ (Abschnitt~\ref{sec:mausposiproc}). Ein Klick gilt als Treffer, wenn der umgerechnete Wert größer als der linke und höchstens so groß wie der rechte Wert der jeweiligen Zeile ist.
+
 % Hinweis: Im PDF waren die Beschreibungen von Hauptbildschirm4_Ergebnis und
 % Hauptbildschirm5_Ergebnis vertauscht. Laut Quelltext (Ver_Code.asm setzt
 % BildschirmVar auf 4, Ent_Code.asm auf 5) gehoert 4 zur Verschluesselung.
@@ -284,7 +300,7 @@ In dieser Datei finden sich alle Variablen. Aufgelistet wären das:
     \endfoot
     \bottomrule
     \endlastfoot
-    \asm{Rundenanzahl} & DB & Beinhaltet die Anzahl der Runden. Damit kann man leichter dann aus z.\,B.\ 10 Runden 5 machen. \\
+    \asm{Rundenanzahl} & DB & Vorbelegt mit 10. Wird nur noch von der auskommentierten 10-Runden-Variante \glqq Nach AES-Standard\grqq{} in \asm{Ablauf_V.asm} und \asm{Ablauf_E.asm} verwendet. Der aktive Ablauf ist fest verdrahtet (siehe Abschnitte~\ref{sec:ablauf-v} und~\ref{sec:ablauf-e}) und ignoriert diese Variable. \\
     \asm{bool_Ent_Ver} & DB & Beinhaltet die Variable, die genutzt wird, um festzuhalten, ob Entschluesseln, Verschluesseln oder keine der Schaltflächen gedrückt wurde. \\
     \asm{ESC_Code} & DB & \asm{1Bh} => Tastaturcode von der ESC-Taste. Für bessere Lesbarkeit im Code. \\
     \asm{Entertaste_Code} & DB & \asm{0Dh} => Tastaturcode von der Enter-Taste. Für bessere Lesbarkeit im Code. \\
@@ -309,18 +325,17 @@ In dieser Datei finden sich alle Variablen. Aufgelistet wären das:
     \asm{VerR2_R} & DW & =777 Beinhaltet die Blocknummer (*2) der mittleren Zeile vom VERSCHLUESSELN (Rechts) \\
     \asm{VerR3_L} & DW & =901 Beinhaltet die Blocknummer (*2) der unteren Zeile vom VERSCHLUESSELN (Links) \\
     \asm{VerR3_R} & DW & =937 Beinhaltet die Blocknummer (*2) der unteren Zeile vom VERSCHLUESSELN (Rechts) \\
-    \asm{TastaturBuffer} & DB & Hier werden die Hex-Werte der Zeichen gespeichert, welche per Tastatureingabe erkannt wurden. \\
-    \asm{TastaturBufferOrg} & DB & Dient als Sicherung der Eingabe, um die Ausgabe des Originaltextes zu gewährleisten. \\
-    \asm{Konstante} & DB & $=5F_{\text{hex}}$ \textbar{} Ist die vordefinierte Initialkonstante. \\
-    \asm{Rundenkonstante} & DB & Ermittelte sich aus der durch \asm{ROL} veränderten vorherigen Rundenkonstante. \\
-    % TODO v2.0.0: Rundenschluessel_0 -> Der Hinweis "nicht ueberschreibbar" gilt weiterhin
-    % fuer den Standardschluessel; die Eingabe schreibt nur in Rundenschluessel_Expand.
-    \asm{Rundenschluessel_0} & DB & Ist der fest implementierte Standardschlüssel, welcher während der Laufzeit auch nicht überschrieben werden kann. \\
-    \asm{Rundenschluessel_Expand} & DB & Hier wird der \asm{Rundenschluessel_0} reinkopiert. Bei einer Benutzereingabe eines eigenen Schlüssels, werden nur hier die entsprechenden Einträge verändert. Ebenfalls die erweiterten Schlüssel (siehe \asm{Schluesselexpansion}) werden hier abgelegt. \\
-    \asm{ShiftZwSpeicher} & DB & Wird benötigt für die Arbeit der \asm{ShiftRow} und seinem Pendant \asm{ShiftRow_1}. \\
+    \asm{TastaturBuffer} & DB & \asm{65 DUP(0)}: 64 Nutzbytes (der Zustand, siehe Abschnitt~\ref{sec:zustand}) und ein Reservebyte. Hier stehen zuerst die eingegebenen Zeichen (bzw. Bytes), dann alle Zwischenergebnisse und am Ende das Ergebnis. \\
+    \asm{TastaturBufferOrg} & DB & \asm{65 DUP(0)}: Sicherung der Eingabe, um die Ausgabe des Originaltextes zu gewährleisten. \\
+    \asm{Konstante} & DB & \asm{01011111b} $=$ \hexo{5F} \textbar{} Ist die vordefinierte Initialkonstante. \\
+    \asm{Rundekonstante} & DB & Aktuelle Rundenkonstante (im Quelltext heißt die Variable \asm{Rundekonstante}, nicht \asm{Rundenkonstante}). \asm{SchluesselInitialisieren} setzt sie auf \asm{Konstante} zurück, jede \asm{Schluesselexpansion} rotiert sie mit \asm{ROL 1} weiter: \hexo{5F}, \hexo{BE}, \hexo{7D}\ldots \\
+    \asm{Rundenschluessel_0} & DB & 64 Bytes. Zu Beginn der eingebaute Standardschlüssel. Die Schlüsseleingabe (\asm{Ver_Code.asm}, \asm{Ent_Code.asm}) schreibt Byte für Byte in dieses Array; nicht eingegebene Stellen behalten den Standardwert. Das Array bleibt danach unverändert und ist die Quelle für \asm{SchluesselInitialisieren}. \\
+    \asm{Rundenschluessel_Expand} & DB & 64 Bytes, liegt im Speicher direkt hinter \asm{Rundenschluessel_0}. Arbeitskopie des Schlüssels: Hier steht der jeweils aktuelle Rundenschlüssel, den \asm{Schluesselexpansion} in jeder Runde weiterrechnet und \asm{SchluesselAnwenden} auf den Zustand \asm{XOR}t. \\
+    \asm{ShiftZwSpeicher} & DB & \asm{4 DUP(0)}: Zwischenlager für die vier Bytes einer Zeile bei \asm{ShiftRow} und \asm{ShiftRow_1}. \\
     \asm{ShiftBXZwSpeicher} & DW & Da ein Index-Register nicht mit einem Halb-Register (H oder L) verglichen werden kann, wird das \asm{BX}-Register hier genutzt, was durch den internen Ablauf jedoch an einigen Stellen zwischengespeichert werden muss. \\
-    \asm{ShiftColumnZW} & DW & Sichert die Zwischenergebnisse aus der \asm{ShiftColumn} \& \asm{ShiftColumn_1}. \\
-    \asm{ShiftColumnZW2} & DW & Sichert die Zwischenergebnisse aus der \asm{ShiftColumn} für die Spaltenrechnung, sonst gäbe es Rechenfehler da Werte überschrieben werden. \\
+    \asm{ShiftColumnZW} & DB & Ein Byte: Zwischenergebnis bei \asm{ShiftColumn}. \\
+    \asm{ShiftColumnZW2} & DB & \asm{4 DUP(0)}: Puffer für die vier Bytes einer Spalte. In \asm{ShiftColumn} die neuen Werte, in \asm{ShiftColumn_1} (ab 2.0.0) die \emph{alten} Eingabewerte der Spalte -- ohne diesen Puffer würde die Rechnung schon veränderte Werte lesen. \\
+    \asm{InvMixMatrix} & DB & \textbf{Neu in 2.0.0.} Die inverse Spaltenmatrix (16 Bytes, zeilenweise): \hexo{0E} \hexo{0B} \hexo{0D} \hexo{09} / \hexo{09} \hexo{0E} \hexo{0B} \hexo{0D} / \hexo{0D} \hexo{09} \hexo{0E} \hexo{0B} / \hexo{0B} \hexo{0D} \hexo{09} \hexo{0E}. Wird von \asm{ShiftColumn_1} gelesen. \\
 \end{longtable}
 
 Die in der \asm{config.asm} abgelegten Bildschirme (Hauptbildschirm 2 bis 5) sehen im Programm wie folgt aus:

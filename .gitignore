@@ -65,3 +65,7 @@ $RECYCLE.BIN/
 # --- Archive / Bundles (Transportdateien, kein Quelltext) -------------------
 *.bundle
 *.zip
+
+# Python
+__pycache__/
+*.pyc

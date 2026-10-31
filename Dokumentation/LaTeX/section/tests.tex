@@ -1,6 +1,7 @@
-% Ehemals Test(s).pdf
-% TODO v2.0.0: Testfall 3 (ShiftRow, vierter Block) und Testfall 5 (ShiftColumn
-% invers) beschreiben den Stand 1.x und muessten mit 2.0.0 neu durchgefuehrt werden.
+% Ehemals Test(s).pdf -- ergaenzt um die Pruefung der Version 2.0.0
+% Teil A: Testfaelle 1 bis 6 (Version 1.x, 2021, DOS-Box, mit Screenshots)
+% Teil B: Modellpruefung 2.0.0 (Dokumentation/Modelltest/modelltest.py)
+% Teil C: noch auszufuehrende DOS-Box-Tests fuer 2.0.0
 
 % Hilfsmakros fuer die Tabellen (nur in dieser Datei)
 \newcommand{\hexdez}[2]{$#1_{\text{hex}}$ ($#2_{\text{dez}}$)}
@@ -16,15 +17,34 @@
 \section{AES-Tests}\label{sec:tests}
 \textit{Abschlussprojekt Modul \glqq Assemblerprogrammierung\grqq{} von Konstantin Blechschmidt \& Tim M.\ Kretzschmar}
 
-\subsection*{Inhalt}
-\begin{tabular}{@{\hspace{1cm}}l@{\hspace{1cm}}l@{\hspace{3mm}}l}
-    Testfall 1 -- Bildschirmwechsel per Mausklick & Erfolgreich & \iconok \\
-    Testfall 2 -- SBOX-Substitution bei Ver- und Entschlüsseln & Erfolgreich & \iconok \\
-    Testfall 3 -- ShiftRow \& Inverse & Erfolgreich & \iconok \\
-    Testfall 4 -- ShiftColumn & Erfolgreich & \iconok \\
-    Testfall 5 -- ShiftColumn Invers & Fehlgeschlagen & \iconfehler \\
-    Testfall 6 -- SchluesselAnwenden (PROC) & Erfolgreich & \iconok \\
-\end{tabular}
+\subsection{Überblick und Stand der Prüfung}\label{sec:tests-stand}
+Die Tests gliedern sich in drei Teile:
+\begin{description}[leftmargin=!,labelwidth=2.2cm,noitemsep]
+    \item[Teil A] Die Testfälle 1 bis 6 sind die Tests der \emph{Version~1.x} aus dem Jahr 2021. Sie wurden in der DOS-Box durchgeführt, die Screenshots sind die Belege. Sie bleiben als Dokumentation erhalten, wurden für Version~\versionProjekt\ aber \textbf{nicht wiederholt}.
+    \item[Teil B] Die Modellprüfung der Version~\versionProjekt\ (Abschnitt~\ref{sec:tests-modell}): Die Rechenroutinen sind in Python nachgebaut und gegen unabhängige Referenzen geprüft.
+    \item[Teil C] Die Tests, die in der DOS-Box für Version~\versionProjekt\ noch nachzuholen sind (Abschnitt~\ref{sec:tests-dosbox}), mit den erwarteten Werten aus Teil~B.
+\end{description}
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.1}
+    \caption{Übersicht der Testfälle aus Version 1.x und ihr Stand in Version \versionProjekt}\label{tab:tests-uebersicht}
+    \begin{tabular}{@{}p{5.2cm}cp{6.0cm}@{}}
+        \toprule
+        \textbf{Testfall (Version 1.x)} & \textbf{Ergebnis 1.x} & \textbf{Stand in \versionProjekt} \\
+        \midrule
+        1 -- Bildschirmwechsel per Mausklick & \iconok & Code unverändert; DOS-Box-Wiederholung offen \\
+        2 -- SBOX-Substitution bei Ver- und Entschlüsseln & \iconok & inverse S-Box geändert (Index \hexs{70}); Modell M1, DOS-Box offen \\
+        3 -- ShiftRow \& Inverse & \iconok & \asm{ShiftRow} geändert (vierter Block); Modell M2, DOS-Box offen \\
+        4 -- ShiftColumn & \iconok & \asm{MalZweiPROC} geändert; Modell M4, M6, M7 \\
+        5 -- ShiftColumn Invers & \iconfehler & \asm{ShiftColumn\_1} neu geschrieben; Modell M5--M7 \\
+        6 -- SchluesselAnwenden (PROC) & \iconok & unverändert; Schlüsselexpansion neu in M3 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Die Symbole \iconok{} und \iconfehler{} in dieser Tabelle und in den Testfällen geben das Ergebnis der \emph{damaligen} Tests an. Sie sagen nichts über Version~\versionProjekt\ aus.
 
 %------------------------------------------------------------------------------
 \subsection{Testfall 1 -- Bildschirmwechsel per Mausklick}\label{sec:tf1}
@@ -116,6 +136,8 @@ Die ganzen \glqq R\grqq{} entstehen wieder durch die fehlende Eingabe (0 bei der
 %------------------------------------------------------------------------------
 \Needspace{14\baselineskip}
 \subsection{Testfall 3 -- ShiftRow \& Inverse}\label{sec:tf3}
+\textbf{Stand 2.0.0:} Der Test war erfolgreich, deckte aber einen Fehler nicht auf: Der Text hat nur 18 Zeichen, der vierte Block (\asm{Pos 48}--\asm{63}) enthält nur Nullbytes, und deren Verschiebung ist unsichtbar. Tatsächlich wurde der vierte Block in 1.x nie verschoben (Abschnitt~\ref{sec:vers-shiftrow}). Seit 2.0.0 ist das behoben; ein Test mit 64 Zeichen steht in Teil~C aus.
+
 \begin{figure}[H]
     \noindent\textbf{Eingabe Verschlüsselung}\par\vspace{2mm}
     \centering
@@ -181,6 +203,8 @@ Die ganzen \glqq R\grqq{} entstehen wieder durch die fehlende Eingabe (0 bei der
 %------------------------------------------------------------------------------
 \Needspace{14\baselineskip}
 \subsection{Testfall 4 -- ShiftColumn}\label{sec:tf4}
+\textbf{Stand 2.0.0:} \asm{MalZweiPROC}, auf die \asm{ShiftColumn} aufbaut, wurde korrigiert (Abschnitt~\ref{sec:vers-shiftcolumn}). Die Prüfung gegen die Referenzvektoren steht in Abschnitt~\ref{sec:tests-modell} (M4, M6, M7). Wie damals wird \asm{ShiftColumn} nur in einem Einzeltest, nicht im aktiven Ablauf geprüft.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{images/tf4_handrechnung.png}
@@ -199,7 +223,9 @@ Die ganzen \glqq R\grqq{} entstehen wieder durch die fehlende Eingabe (0 bei der
 %------------------------------------------------------------------------------
 \Needspace{14\baselineskip}
 \subsection{Testfall 5 -- ShiftColumn Invers}\label{sec:tf5}
-Ergebnis: fehlgeschlagen \iconfehler
+Ergebnis in Version~1.x: fehlgeschlagen \iconfehler
+
+\textbf{Stand 2.0.0:} Die PROC wurde neu geschrieben (Abschnitt~\ref{sec:asm-dateien}, \asm{ShiftColumn\_1}); die Handrechnung unten zeigt noch den damaligen Versuch. Das Ergebnis der neuen Fassung im Modell steht in M5 bis M7 (Abschnitt~\ref{sec:tests-modell}).
 
 \begin{figure}[H]
     \centering
@@ -250,3 +276,62 @@ Es wird hier der implementierte Standardschlüssel ohne Expansion verwendet zur 
     \caption{Testfall 6: Screenshot als Beweis}
     \label{fig:tf6-shot}
 \end{figure}
+
+%------------------------------------------------------------------------------
+\Needspace{14\baselineskip}
+\subsection{Modellprüfung der Version \versionProjekt}\label{sec:tests-modell}
+Zu Version~\versionProjekt\ gehört das Skript \asm{Dokumentation/Modelltest/modelltest.py}. Es bildet die Prozeduren \asm{SchluesselInitialisieren}, \asm{SchluesselAnwenden}, \asm{Schluesselexpansion}, \asm{SBOXSubstitution}, \asm{ShiftRow}, \asm{MalZweiPROC}, \asm{GFMulPROC}, \asm{ShiftColumn} und ihre Gegenstücke Schritt für Schritt (gleiche Register- und Speicherbelegung, gleiche Schleifen) in Python nach und liest die Tabellen direkt aus \asm{SBOX.asm} und \asm{config.asm}. Geprüft wird gegen Referenzen, die nicht aus dem Assemblercode stammen: die AES-S-Box aus ihrer Definition, die Multiplikation in $\mathrm{GF}(2^8)$ per Polynomdivision, Testvektoren aus \cite{fips197} bzw.\ der MixColumns-Literatur und eine Formel für \asm{ShiftRow}.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.1}
+    \caption{Modellprüfung -- Ergebnisse von \asm{modelltest.py}}\label{tab:tests-modell}
+    \begin{tabular}{@{}lp{6.2cm}p{5.6cm}@{}}
+        \toprule
+        \textbf{Nr.} & \textbf{Prüfung} & \textbf{Umfang / Ergebnis} \\
+        \midrule
+        M1 & S-Box und inverse S-Box gleich der AES-S-Box \cite{fips197} & 256 Einträge je Tabelle \iconok \\
+        M2 & \asm{ShiftRow} und \asm{ShiftRow\_1}, alle vier Blöcke & 300 Zufallszustände, Block 4 einzeln \iconok \\
+        M3 & Schlüsselexpansion & $K_1=$ \asm{65 BE 13 DC}\ldots, $K_2=$ \asm{7A C4 D7 0B}\ldots; Konstante \asm{5F}, \asm{BE}, \asm{7D} \iconok \\
+        M4 & \asm{MalZweiPROC} & alle 256 Eingaben \iconok \\
+        M5 & \asm{GFMulPROC} & alle 65\,536 Paare \iconok \\
+        M6 & \asm{ShiftColumn} und \asm{ShiftColumn\_1} gegen Testvektoren & 6 Vektoren (u.\,a. \asm{DB 13 53 45} $\to$ \asm{8E 4D A1 BC}), alle 16 Spalten \iconok \\
+        M7 & \asm{ShiftColumn} und Umkehrung, zufällig & 2000 Zustände \iconok \\
+        M8 & Verschlüsselung \glqq Hallo\grqq{} & Chiffrat wie in Kapitel~\ref{sec:ablauf-beispiel} \iconok \\
+        M9 & Ver- und Entschlüsseln, Standardschlüssel & 500 Zufallstexte \iconok \\
+        M10 & Ver- und Entschlüsseln, eigener (Teil-)Schlüssel & 500 Fälle \iconok \\
+        M11 & vierter Block wird verarbeitet & \asm{Pos 48}--\asm{63} \iconok \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Aussagekraft.} Die Modellprüfung belegt, dass die \emph{Logik} der Assemblerroutinen stimmt. Sie belegt nicht, dass der Quelltext fehlerfrei übersetzt wird, dass die Register im echten Lauf die angenommenen Werte haben (z.\,B.\ \asm{DS}/\asm{ES}) oder dass die Bildschirmausgabe stimmt. Dafür sind die DOS-Box-Tests in Abschnitt~\ref{sec:tests-dosbox} nötig. Beim Schreiben des Skripts fiel auf, dass die Tabelle \asm{s\_1\_0} einen Eintrag \asm{0D5H} (großes \asm{H}) enthält; Programme, die die Tabelle auswerten, müssen die Groß-/Kleinschreibung des Suffixes beachten (TASM akzeptiert beides).
+
+%------------------------------------------------------------------------------
+\Needspace{14\baselineskip}
+\subsection{Noch auszuführen: Tests in der DOS-Box (Version \versionProjekt)}\label{sec:tests-dosbox}
+Diese Tests sind für Version~\versionProjekt\ noch von Hand durchzuführen (\asm{asmaes.bat}, dann \asm{start.bat}). Die erwarteten Werte stammen aus dem Modell (Teil~B). Die Spalte \glqq Ergebnis\grqq{} ist absichtlich leer.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.15}
+    \caption{DOS-Box-Tests für Version \versionProjekt}\label{tab:tests-dosbox}
+    \begin{tabular}{@{}lp{3.1cm}p{5.9cm}c@{}}
+        \toprule
+        \textbf{Nr.} & \textbf{Eingabe} & \textbf{Erwartung} & \textbf{Ergebnis} \\
+        \midrule
+        D1 & Programm kompilieren und starten & fehlerfrei übersetzt; Hauptbildschirm erscheint & \\
+        D2 & Verschlüsseln: \texttt{Hallo}, \asm{Enter}, \asm{Enter} & Chiffrat \asm{E159BDA8 8E0FB958 \ldots}, vollständig Listing~\ref{lst:beispiel-chiffrat} & \\
+        D3 & Entschlüsseln: Chiffrat aus D2, \asm{Enter}, \asm{Enter} & \texttt{Hallo}, dahinter Leerstellen & \\
+        D4 & Verschlüsseln: \texttt{Hallo}, eigener Schlüssel \asm{01} $\times 64$ (128 Ziffern \texttt{01}) & beginnt mit \asm{E9B50FF0 A2378E6D}; Entschlüsseln mit demselben Schlüssel liefert \texttt{Hallo} & \\
+        D5 & Verschlüsseln: \texttt{Hallo}, Teilschlüssel \texttt{5F} (nur ein Byte) & beginnt mit \asm{3E655D79 1E745EBC} & \\
+        D6 & Verschlüsseln: 64 Zeichen \texttt{ABC\ldots Zabc\ldots z0123456789+-} & beginnt mit \asm{BF3DF6BD FC3592CE}, endet mit \asm{\ldots 97D9733B}; Rückweg liefert den Text & \\
+        D7 & Entschlüsseln mit falschem Schlüssel & kein \texttt{Hallo}, nur Zeichensalat & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+D6 prüft insbesondere den vierten Block (\asm{Pos 48}--\asm{63}), der bei Version~1.0 nicht verschoben wurde. D4 und D5 prüfen die Schlüsseleingabe, die bis Version~1.0 wirkungslos war. Erst nach Abarbeitung dieser Tabelle ist Version~\versionProjekt\ im eigentlichen Sinn getestet.
+

@@ -4,10 +4,10 @@
 
 % Hilfsmakros fuer die Tabellen (nur in dieser Datei)
 \newcommand{\hexdez}[2]{$#1_{\text{hex}}$ ($#2_{\text{dez}}$)}
-\newcommand{\hexo}[1]{$#1_{\text{hex}}$}
-\newcommand{\sbrow}[4]{#1 & \hexdez{#2}{#3} & \hexo{#4} & \iconok \\ \hline}
+\newcommand{\hexs}[1]{$#1_{\text{hex}}$}
+\newcommand{\sbrow}[4]{#1 & \hexdez{#2}{#3} & \hexs{#4} & \iconok \\ \hline}
 \newcommand{\srrow}[6]{#1 & \hexdez{#2}{#3} & \hexdez{#4}{#5} & \cellcolor{blk#6} #6 \\ \hline}
-\newcommand{\sarow}[5]{#1 & \hexdez{#2}{#3} & \hexo{#4} & \hexo{#5} \\ \hline}
+\newcommand{\sarow}[5]{#1 & \hexdez{#2}{#3} & \hexs{#4} & \hexs{#5} \\ \hline}
 \definecolor{blk1}{RGB}{189,215,238}
 \definecolor{blk2}{RGB}{255,217,102}
 \definecolor{blk3}{RGB}{244,176,132}
@@ -90,7 +90,7 @@
         \sbrow{s}{73}{115}{8F}
         \sbrow{o}{6F}{111}{A8}
         \sbrow{r}{72}{114}{40}
-        \glqq 0\grqq{} (Nicht die ASCII 0) & \hexo{00} & \hexo{63} & \iconok \\ \hline
+        \glqq 0\grqq{} (Nicht die ASCII 0) & \hexs{00} & \hexs{63} & \iconok \\ \hline
     \end{tabular}
 \end{table}
 
@@ -151,7 +151,7 @@ Die ganzen \glqq R\grqq{} entstehen wieder durch die fehlende Eingabe (0 bei der
         \srrow{s}{73}{115}{73}{115}{4}
         \srrow{o}{6F}{111}{6F}{111}{1}
         \srrow{r}{72}{114}{72}{114}{1}
-        \glqq 0\grqq{} (Nicht die ASCII 0) & \hexo{00} & \hexo{00} & \cellcolor{blk1} 1 \\ \hline
+        \glqq 0\grqq{} (Nicht die ASCII 0) & \hexs{00} & \hexs{00} & \cellcolor{blk1} 1 \\ \hline
     \end{tabular}
 \end{table}
 

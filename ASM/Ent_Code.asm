@@ -142,6 +142,14 @@ TastaturabfrageEnt2Schluessel:
 
         MOV DI, 2736
 
+        ; Die Schluesseleingabe beginnt bei Rundenschluessel_0[0]. SI zaehlte bis hierher die
+        ; Bytes des Chiffretextes (meist 64) und MUSS zurueckgesetzt werden, sonst wuerde der
+        ; Schluessel hinter Rundenschluessel_0 in Rundenschluessel_Expand geschrieben.
+        MOV SI, 0
+        ; Nibble-Zaehler und Zwischenspeicher sicher auf 0 (z. B. nach ungerader Zeichenzahl im Text)
+        MOV CL, 0
+        MOV DL, 0
+
 TastaturabfrageEnt2SchluesselDieZweite:
 
         XOR AX, AX
@@ -269,6 +277,9 @@ LabelDecEntSchluessel2:
         ADD DI, 2
         INC CL
 
+        SUB AL, 48            ; ASCII -> Hexwert (wie in der ersten Schluesselzeile; fehlte hier bisher,
+                              ; dadurch waren alle Schluesselbytes der 2. Zeile um 30h zu gross)
+
         CMP CL, 1
         JE ZwischenspeichernInDL2
 
@@ -301,6 +312,11 @@ ZwischenspeichernInDL2:
 ;--------------------------------RUNDEN-ENTSCHLUESSELUNG-----------------
 
 AufrufenEntAusASM:
+
+        ; Erst JETZT (nach der Schluesseleingabe) den - ggf. eigenen - Schluessel aus
+        ; Rundenschluessel_0 in Rundenschluessel_Expand uebernehmen und die Rundenkonstante
+        ; zuruecksetzen. Ablauf_E.asm startet mit Rundenschluessel_Expand.
+        CALL SchluesselInitialisieren
 
         ;_____________________________________________________________________________________________________________________________________
         INCLUDE Ablauf_E.asm

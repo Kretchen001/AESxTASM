@@ -54,6 +54,15 @@ TastaturabfrageVerSchluessel:
 
         MOV DI, 2576
 
+        ; Die Schluesseleingabe beginnt bei Rundenschluessel_0[0]. SI zaehlte bis hierher die
+        ; Zeichen des Klartextes und MUSS zurueckgesetzt werden, sonst landet der Schluessel
+        ; ab Index <Textlaenge> (und fuer 64 Zeichen sogar hinter dem Array in Rundenschluessel_Expand).
+        MOV SI, 0
+        ; CL (Nibble-Zaehler) und DL (Zwischenspeicher 1. Nibble) muessen vor der ersten Eingabe 0 sein,
+        ; sonst wird das erste Schluesselbyte falsch zusammengesetzt (Ent_Code.asm macht das bereits so).
+        MOV CL, 0
+        MOV DL, 0
+
 TastaturabfrageVerSchluesselDieZweite:
 
         XOR AX, AX
@@ -181,6 +190,9 @@ LabelDecVerSchluessel2:
         ADD DI, 2
         INC CL
 
+        SUB AL, 48            ; ASCII -> Hexwert (wie in der ersten Schluesselzeile; fehlte hier bisher,
+                              ; dadurch waren alle Schluesselbytes der 2. Zeile um 30h zu gross)
+
         CMP CL, 1
         JE ZwischenspeichernInDL2_Ver
 
@@ -212,6 +224,11 @@ ZwischenspeichernInDL2_Ver:
 
 
 AufrufenVerAusASM:
+
+        ; Erst JETZT (nach der Schluesseleingabe) den - ggf. eigenen - Schluessel aus
+        ; Rundenschluessel_0 in Rundenschluessel_Expand uebernehmen und die Rundenkonstante
+        ; zuruecksetzen. Vorher stand hier noch der Standardschluessel in Rundenschluessel_Expand.
+        CALL SchluesselInitialisieren
 
 ;--------------------------------RUNDEN-VERSCHLUESSELUNG-----------------
 

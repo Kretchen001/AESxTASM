@@ -6,7 +6,7 @@ Dieses Kapitel verfolgt einen Klartext durch alle Schritte: von der Tasteneingab
 
 %------------------------------------------------------------------------------
 \subsection{Eingabe}
-Nach dem Klick auf \glqq Verschlüsseln\grqq{} liest \asm{Ver\_Code.asm} die Tasten. \asm{DI} startet bei \asm{1936} (Zeile 12, Spalte 8; Abschnitt~\ref{sec:video}).
+Nach dem Klick auf \glqq Verschlüsseln\grqq{} liest \asm{Ver_Code.asm} die Tasten. \asm{DI} startet bei \asm{1936} (Zeile 12, Spalte 8; Abschnitt~\ref{sec:video}).
 
 \begin{table}[!htbp]
     \centering
@@ -26,7 +26,7 @@ Nach dem Klick auf \glqq Verschlüsseln\grqq{} liest \asm{Ver\_Code.asm} die Tas
     \end{tabular}
 \end{table}
 
-Der Zustand ist damit \asm{48 61 6C 6C 6F 00 00 00 \ldots}: fünf Textbytes und 59 Nullbytes. Ein sofortiges \asm{Enter} in der Schlüsseleingabe springt zu \asm{AufrufenVerAusASM}; \asm{SchluesselInitialisieren} kopiert den Standardschlüssel nach \asm{Rundenschluessel\_Expand} und setzt die Rundenkonstante auf \hexo{5F}.
+Der Zustand ist damit \asm{48 61 6C 6C 6F 00 00 00 ...}: fünf Textbytes und 59 Nullbytes. Ein sofortiges \asm{Enter} in der Schlüsseleingabe springt zu \asm{AufrufenVerAusASM}; \asm{SchluesselInitialisieren} kopiert den Standardschlüssel nach \asm{Rundenschluessel_Expand} und setzt die Rundenkonstante auf \hexo{5F}.
 
 %------------------------------------------------------------------------------
 \subsection{Die Rundenschlüssel}
@@ -56,7 +56,7 @@ Tabelle~\ref{tab:beispiel-zustand} zeigt die ersten acht Zustandsbytes (\asm{Pos
 \begin{table}[!htbp]
     \centering
     \small
-    \caption{Zustand \asm{Pos 0} bis \asm{Pos 7} nach jedem Schritt (Verschlüsselung \glqq Hallo\grqq)}\label{tab:beispiel-zustand}
+    \caption{Zustand \texttt{Pos 0} bis \texttt{Pos 7} nach jedem Schritt (Verschlüsselung \glqq Hallo\grqq)}\label{tab:beispiel-zustand}
     \begin{tabular}{@{}llcccccccc@{}}
         \toprule
         Schritt & Aufruf & [0] & [1] & [2] & [3] & [4] & [5] & [6] & [7] \\
@@ -117,7 +117,7 @@ Gibt man das Chiffrat aus Listing~\ref{lst:beispiel-chiffrat} in den Entschlüss
 \begin{table}[!htbp]
     \centering
     \small
-    \caption{Rückrechnung von \asm{Pos 0} und \asm{Pos 6}}\label{tab:beispiel-rueck}
+    \caption{Rückrechnung von \texttt{Pos 0} und \texttt{Pos 6}}\label{tab:beispiel-rueck}
     \begin{tabular}{@{}lll@{}}
         \toprule
         Schritt (Tabelle~\ref{tab:ablauf-e}) & \asm{Pos 0} & \asm{Pos 6} (das \glqq o\grqq) \\
@@ -134,4 +134,4 @@ Gibt man das Chiffrat aus Listing~\ref{lst:beispiel-chiffrat} in den Entschlüss
     \end{tabular}
 \end{table}
 
-Die Nullbytes kommen als \asm{00h} zurück; die Ausgabe (\asm{BildschirmVar} $=5$) schreibt alle 64 Bytes als Zeichen, \asm{00h} erscheint als Leerstelle. Die Rückrechnung funktioniert nur, wenn \asm{s\_1\_0} die exakte Umkehrung von \asm{s\_0} ist; deshalb war die Korrektur des Tabelleneintrags \asm{70h} in Version 2.0.0 notwendig (Abschnitt~\ref{sec:sbox}).
+Die Nullbytes kommen als \asm{00h} zurück; die Ausgabe (\asm{BildschirmVar} $=5$) schreibt alle 64 Bytes als Zeichen, \asm{00h} erscheint als Leerstelle. Die Rückrechnung funktioniert nur, wenn \asm{s_1_0} die exakte Umkehrung von \asm{s_0} ist; deshalb war die Korrektur des Tabelleneintrags \asm{70h} in Version 2.0.0 notwendig (Abschnitt~\ref{sec:sbox}).

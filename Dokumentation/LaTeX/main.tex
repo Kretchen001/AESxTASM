@@ -111,7 +111,8 @@
 
 \setlength{\parindent}{0mm} % also nicht vorhanden
 \setlength{\parskip}{3mm}
-\setlength{\emergencystretch}{2em}
+\setlength{\emergencystretch}{4em}
+\tolerance=1500
 
 % Grafiken -----------------------------------------------------------------
 \usepackage{graphics,graphicx}
@@ -167,6 +168,10 @@
 % Unterstriche muessen NICHT escaped werden (\asm{Ver_Code.asm}); an ihnen darf
 % umgebrochen werden und das Makro ist in \caption{...} verwendbar.
 \DeclareUrlCommand\asm{\urlstyle{tt}}
+% lange Namen (SchluesselInitialisieren, Rundenschluessel_Expand) duerfen notfalls vor
+% einem Grossbuchstaben (CamelCase) umbrechen, statt in den Rand zu laufen
+\makeatletter\g@addto@macro\UrlBreaks{\do\A\do\B\do\C\do\D\do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M\do\N\do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X\do\Y\do\Z}\makeatother
+\Urlmuskip=0mu plus 1mu
 % Hexadezimalzahl: \hexo{4D} -> 4Dh
 \newcommand{\hexo}[1]{\texttt{#1h}}
 % Haekchen / Kreuz (Testfaelle)

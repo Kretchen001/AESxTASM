@@ -17,7 +17,7 @@
     \item Die hexadezimale Eingabe akzeptiert die Ziffern 0 bis 9 und \emph{groß} A bis F; Kleinbuchstaben und andere Tasten werden ignoriert.
     \item \textbf{Eigener Schlüssel (neu in Version~2.0.0).} Ein eingegebener Schlüssel wird jetzt tatsächlich für die Rechnung verwendet. In Version~1.0 wurde er zwar angezeigt, aber nicht angewandt. Zum Entschlüsseln muss derselbe Schlüssel wie beim Verschlüsseln eingegeben werden.
     \item Wird nur ein Teil des Schlüssels eingegeben, ersetzt er die ersten Bytes des Standardschlüssels; die restlichen Bytes bleiben unverändert. Eine begonnene, aber nicht vollständige Ziffer (ungerade Anzahl) wird verworfen.
-    \item Ein einmal eingegebener Schlüssel bleibt bis zum Programmende erhalten. Wer danach wieder den Standardschlüssel braucht, muss das Programm neu starten (Abschnitt~\ref{sec:einschraenkungen}).
+    \item Ein einmal eingegebener Schlüssel bleibt bis zum Programmende erhalten. Wer danach wieder den Standardschlüssel braucht, muss das Programm neu starten (Kapitel~\ref{sec:einschraenkungen}).
     \item Der verschlüsselte Text erscheint hexadezimal, der entschlüsselte in ASCII-Zeichen. Der Chiffretext ist immer 64 Bytes lang, auch bei kurzem Klartext.
     \item Mit Version~1.0 erzeugte Chiffretexte lassen sich mit Version~2.0.0 nicht mehr vollständig entschlüsseln, weil sich durch den Fehler in \asm{ShiftRow} die Bytes 48 bis 63 und durch die S-Box-Korrektur einzelne Werte ändern (Kapitel~\ref{sec:aenderungen}).
 \end{itemize}

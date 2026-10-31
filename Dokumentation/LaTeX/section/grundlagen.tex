@@ -6,7 +6,7 @@ Dieses Kapitel erklärt die Begriffe und Rechenregeln, die in allen folgenden Ka
 
 %------------------------------------------------------------------------------
 \subsection{Der 64-Byte-Zustand}\label{sec:zustand}
-Der gesamte Rechenvorgang findet im Array \asm{TastaturBuffer} statt (\emph{Zustand}). Es hat 65 Bytes; die Indizes 0 bis 63 sind die Nutzbytes, Byte 64 ist eine Reserve. Beim Verschlüsseln stehen zu Beginn die ASCII-Werte des Klartextes darin, danach der Zustand nach jedem Rechenschritt und am Ende der Chiffretext. Nicht eingegebene Stellen enthalten \asm{00h} und werden mitverschlüsselt (Abschnitt~\ref{sec:einschraenkungen}).
+Der gesamte Rechenvorgang findet im Array \asm{TastaturBuffer} statt (\emph{Zustand}). Es hat 65 Bytes; die Indizes 0 bis 63 sind die Nutzbytes, Byte 64 ist eine Reserve. Beim Verschlüsseln stehen zu Beginn die ASCII-Werte des Klartextes darin, danach der Zustand nach jedem Rechenschritt und am Ende der Chiffretext. Nicht eingegebene Stellen enthalten \asm{00h} und werden mitverschlüsselt (Kapitel~\ref{sec:einschraenkungen}).
 
 Der Zustand ist \emph{kein} einzelner AES-Block, sondern besteht aus vier Blöcken zu je 16 Bytes, die unabhängig voneinander verarbeitet werden. Jeder Block wird \emph{zeilenweise} als $4\times4$-Matrix gelesen. Für das Byte in Block $b$ ($0\ldots3$), Zeile $r$ ($0\ldots3$) und Spalte $c$ ($0\ldots3$) gilt
 \[
@@ -18,7 +18,7 @@ Beispiel: Block 2, Zeile 3, Spalte 1 liegt an $\mathtt{Pos}=16\cdot2+4\cdot3+1=4
     \centering
     \small
     \setlength{\tabcolsep}{5pt}
-    \caption{Lage der Bytes im Zustand (Positionen \asm{Pos 0} bis \asm{Pos 63})}\label{tab:zustand}
+    \caption{Lage der Bytes im Zustand (Positionen \texttt{Pos 0} bis \texttt{Pos 63})}\label{tab:zustand}
     \begin{tabular}{@{}c|cccc|cccc|cccc|cccc@{}}
         & \multicolumn{4}{c|}{Block 0} & \multicolumn{4}{c|}{Block 1} & \multicolumn{4}{c|}{Block 2} & \multicolumn{4}{c}{Block 3} \\
         \hline
@@ -32,7 +32,7 @@ Beispiel: Block 2, Zeile 3, Spalte 1 liegt an $\mathtt{Pos}=16\cdot2+4\cdot3+1=4
 Aus der Anordnung folgt: Eine \emph{Zeile} umfasst vier aufeinanderfolgende Bytes (\asm{Pos 4}\ldots\asm{7}), eine \emph{Spalte} die Bytes im Abstand 4 (\asm{Pos 0, 4, 8, 12}). \asm{ShiftRow} arbeitet auf Zeilen (Abschnitt~\ref{sec:vers-shiftrow}), \asm{ShiftColumn} auf Spalten (Abschnitt~\ref{sec:vers-shiftcolumn}).
 
 %------------------------------------------------------------------------------
-\subsection{Rechnen im Körper \texorpdfstring{$\mathrm{GF}(2^8)$}{GF(2^8)}}\label{sec:gf}
+\subsection{Rechnen im Körper \texorpdfstring{$\mathrm{GF}(2^8)$}{GF(2 hoch 8)}}\label{sec:gf}
 Die Spaltenrechnung von AES (MixColumns und ihre Inverse) beruht auf dem endlichen Körper $\mathrm{GF}(2^8)$ nach \cite{fips197}. Ein Byte wird dabei als Polynom über $\mathrm{GF}(2)$ aufgefasst; \hexo{57} ist beispielsweise $x^6+x^4+x^2+x+1$. Für den Assembler genügen drei Regeln:
 
 \begin{description}[leftmargin=!,labelwidth=3.4cm,noitemsep]
@@ -50,7 +50,7 @@ Abgeleitet: $a\cdot3=(a\cdot2)\oplus a$, und für die inverse Spaltenmatrix werd
 \begin{table}[!htbp]
     \centering
     \small
-    \caption{Ablauf von \asm{GFMulPROC} für $\hexo{4D}\cdot\hexo{0B}$}\label{tab:gfmul}
+    \caption{Ablauf von \texttt{GFMulPROC} für $\hexo{4D}\cdot\hexo{0B}$}\label{tab:gfmul}
     \begin{tabular}{@{}cccccc@{}}
         \toprule
         Schritt & \asm{BH} ($b$) & Bit 0 & \asm{AL} danach & \asm{BL} vor/nach \asm{SHL} & Überlauf \\

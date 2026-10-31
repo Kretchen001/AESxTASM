@@ -38,7 +38,7 @@ Die Tests gliedern sich in drei Teile:
         2 -- SBOX-Substitution bei Ver- und Entschlüsseln & \iconok & inverse S-Box geändert (Index \hexs{70}); Modell M1, DOS-Box offen \\
         3 -- ShiftRow \& Inverse & \iconok & \asm{ShiftRow} geändert (vierter Block); Modell M2, DOS-Box offen \\
         4 -- ShiftColumn & \iconok & \asm{MalZweiPROC} geändert; Modell M4, M6, M7 \\
-        5 -- ShiftColumn Invers & \iconfehler & \asm{ShiftColumn\_1} neu geschrieben; Modell M5--M7 \\
+        5 -- ShiftColumn Invers & \iconfehler & \asm{ShiftColumn_1} neu geschrieben; Modell M5--M7 \\
         6 -- SchluesselAnwenden (PROC) & \iconok & unverändert; Schlüsselexpansion neu in M3 \\
         \bottomrule
     \end{tabular}
@@ -225,7 +225,7 @@ Die ganzen \glqq R\grqq{} entstehen wieder durch die fehlende Eingabe (0 bei der
 \subsection{Testfall 5 -- ShiftColumn Invers}\label{sec:tf5}
 Ergebnis in Version~1.x: fehlgeschlagen \iconfehler
 
-\textbf{Stand 2.0.0:} Die PROC wurde neu geschrieben (Abschnitt~\ref{sec:asm-dateien}, \asm{ShiftColumn\_1}); die Handrechnung unten zeigt noch den damaligen Versuch. Das Ergebnis der neuen Fassung im Modell steht in M5 bis M7 (Abschnitt~\ref{sec:tests-modell}).
+\textbf{Stand 2.0.0:} Die PROC wurde neu geschrieben (Kapitel~\ref{sec:asm-dateien}, \asm{ShiftColumn_1}); die Handrechnung unten zeigt noch den damaligen Versuch. Das Ergebnis der neuen Fassung im Modell steht in M5 bis M7 (Abschnitt~\ref{sec:tests-modell}).
 
 \begin{figure}[H]
     \centering
@@ -286,17 +286,17 @@ Zu Version~\versionProjekt\ gehört das Skript \asm{Dokumentation/Modelltest/mod
     \centering
     \small
     \renewcommand{\arraystretch}{1.1}
-    \caption{Modellprüfung -- Ergebnisse von \asm{modelltest.py}}\label{tab:tests-modell}
+    \caption{Modellprüfung -- Ergebnisse von \texttt{modelltest.py}}\label{tab:tests-modell}
     \begin{tabular}{@{}lp{6.2cm}p{5.6cm}@{}}
         \toprule
         \textbf{Nr.} & \textbf{Prüfung} & \textbf{Umfang / Ergebnis} \\
         \midrule
         M1 & S-Box und inverse S-Box gleich der AES-S-Box \cite{fips197} & 256 Einträge je Tabelle \iconok \\
-        M2 & \asm{ShiftRow} und \asm{ShiftRow\_1}, alle vier Blöcke & 300 Zufallszustände, Block 4 einzeln \iconok \\
+        M2 & \asm{ShiftRow} und \asm{ShiftRow_1}, alle vier Blöcke & 300 Zufallszustände, Block 4 einzeln \iconok \\
         M3 & Schlüsselexpansion & $K_1=$ \asm{65 BE 13 DC}\ldots, $K_2=$ \asm{7A C4 D7 0B}\ldots; Konstante \asm{5F}, \asm{BE}, \asm{7D} \iconok \\
         M4 & \asm{MalZweiPROC} & alle 256 Eingaben \iconok \\
         M5 & \asm{GFMulPROC} & alle 65\,536 Paare \iconok \\
-        M6 & \asm{ShiftColumn} und \asm{ShiftColumn\_1} gegen Testvektoren & 6 Vektoren (u.\,a. \asm{DB 13 53 45} $\to$ \asm{8E 4D A1 BC}), alle 16 Spalten \iconok \\
+        M6 & \asm{ShiftColumn} und \asm{ShiftColumn_1} gegen Testvektoren & 6 Vektoren (u.\,a. \asm{DB 13 53 45} $\to$ \asm{8E 4D A1 BC}), alle 16 Spalten \iconok \\
         M7 & \asm{ShiftColumn} und Umkehrung, zufällig & 2000 Zustände \iconok \\
         M8 & Verschlüsselung \glqq Hallo\grqq{} & Chiffrat wie in Kapitel~\ref{sec:ablauf-beispiel} \iconok \\
         M9 & Ver- und Entschlüsseln, Standardschlüssel & 500 Zufallstexte \iconok \\
@@ -306,7 +306,7 @@ Zu Version~\versionProjekt\ gehört das Skript \asm{Dokumentation/Modelltest/mod
     \end{tabular}
 \end{table}
 
-\textbf{Aussagekraft.} Die Modellprüfung belegt, dass die \emph{Logik} der Assemblerroutinen stimmt. Sie belegt nicht, dass der Quelltext fehlerfrei übersetzt wird, dass die Register im echten Lauf die angenommenen Werte haben (z.\,B.\ \asm{DS}/\asm{ES}) oder dass die Bildschirmausgabe stimmt. Dafür sind die DOS-Box-Tests in Abschnitt~\ref{sec:tests-dosbox} nötig. Beim Schreiben des Skripts fiel auf, dass die Tabelle \asm{s\_1\_0} einen Eintrag \asm{0D5H} (großes \asm{H}) enthält; Programme, die die Tabelle auswerten, müssen die Groß-/Kleinschreibung des Suffixes beachten (TASM akzeptiert beides).
+\textbf{Aussagekraft.} Die Modellprüfung belegt, dass die \emph{Logik} der Assemblerroutinen stimmt. Sie belegt nicht, dass der Quelltext fehlerfrei übersetzt wird, dass die Register im echten Lauf die angenommenen Werte haben (z.\,B.\ \asm{DS}/\asm{ES}) oder dass die Bildschirmausgabe stimmt. Dafür sind die DOS-Box-Tests in Abschnitt~\ref{sec:tests-dosbox} nötig. Beim Schreiben des Skripts fiel auf, dass die Tabelle \asm{s_1_0} einen Eintrag \asm{0D5H} (großes \asm{H}) enthält; Programme, die die Tabelle auswerten, müssen die Groß-/Kleinschreibung des Suffixes beachten (TASM akzeptiert beides).
 
 %------------------------------------------------------------------------------
 \Needspace{14\baselineskip}
@@ -323,15 +323,17 @@ Diese Tests sind für Version~\versionProjekt\ noch von Hand durchzuführen (\as
         \textbf{Nr.} & \textbf{Eingabe} & \textbf{Erwartung} & \textbf{Ergebnis} \\
         \midrule
         D1 & Programm kompilieren und starten & fehlerfrei übersetzt; Hauptbildschirm erscheint & \\
-        D2 & Verschlüsseln: \texttt{Hallo}, \asm{Enter}, \asm{Enter} & Chiffrat \asm{E159BDA8 8E0FB958 \ldots}, vollständig Listing~\ref{lst:beispiel-chiffrat} & \\
+        D2 & Verschlüsseln: \texttt{Hallo}, \asm{Enter}, \asm{Enter} & Chiffrat \asm{E159BDA8 8E0FB958 ...}, vollständig Listing~\ref{lst:beispiel-chiffrat} & \\
         D3 & Entschlüsseln: Chiffrat aus D2, \asm{Enter}, \asm{Enter} & \texttt{Hallo}, dahinter Leerstellen & \\
         D4 & Verschlüsseln: \texttt{Hallo}, eigener Schlüssel \asm{01} $\times 64$ (128 Ziffern \texttt{01}) & beginnt mit \asm{E9B50FF0 A2378E6D}; Entschlüsseln mit demselben Schlüssel liefert \texttt{Hallo} & \\
         D5 & Verschlüsseln: \texttt{Hallo}, Teilschlüssel \texttt{5F} (nur ein Byte) & beginnt mit \asm{3E655D79 1E745EBC} & \\
-        D6 & Verschlüsseln: 64 Zeichen \texttt{ABC\ldots Zabc\ldots z0123456789+-} & beginnt mit \asm{BF3DF6BD FC3592CE}, endet mit \asm{\ldots 97D9733B}; Rückweg liefert den Text & \\
+        D6 & Verschlüsseln: 64 Zeichen, Text siehe unter der Tabelle & beginnt mit \asm{BF3DF6BD FC3592CE}, endet mit \asm{... 97D9733B}; Rückweg liefert den Text & \\
         D7 & Entschlüsseln mit falschem Schlüssel & kein \texttt{Hallo}, nur Zeichensalat & \\
         \bottomrule
     \end{tabular}
 \end{table}
+
+Der Text für D6 ist \texttt{ABCDEFGHIJKLMNOPQRSTUVWXYZ} gefolgt von \texttt{abcdefghijklmnopqrstuvwxyz} und \texttt{0123456789+-} (zusammen 64 Zeichen, ohne Leerzeichen).
 
 D6 prüft insbesondere den vierten Block (\asm{Pos 48}--\asm{63}), der bei Version~1.0 nicht verschoben wurde. D4 und D5 prüfen die Schlüsseleingabe, die bis Version~1.0 wirkungslos war. Erst nach Abarbeitung dieser Tabelle ist Version~\versionProjekt\ im eigentlichen Sinn getestet.
 

@@ -20,7 +20,7 @@ TASM; Prozessor .486; DOS-Box Version 0.74
 
 \subsection*{Was geht nicht}
 \begin{itemize}[noitemsep]
-    \item Echtes AES nach \cite{fips197}: nur zwei Runden, keine Anfangs-Schlüsseladdition, keine MixColumns im aktiven Ablauf (Abschnitt~\ref{sec:einschraenkungen}). Die Verschlüsselung ist \emph{AES-ähnlich} und nicht zum Schutz echter Daten gedacht.
+    \item Echtes AES nach \cite{fips197}: nur zwei Runden, keine Anfangs-Schlüsseladdition, keine MixColumns im aktiven Ablauf (Kapitel~\ref{sec:einschraenkungen}). Die Verschlüsselung ist \emph{AES-ähnlich} und nicht zum Schutz echter Daten gedacht.
     \item Die auskommentierte 10-Runden-Variante nach AES-Standard ist nicht aktiviert.
     \item Version~2.0.0 wurde bisher an einem Python-Modell geprüft; der Lauf des übersetzten Programms in der DOS-Box steht noch aus (Kapitel~\ref{sec:tests}).
 \end{itemize}

@@ -11,7 +11,7 @@ Das Verfahren ist \textbf{AES-ähnlich, nicht AES} (Tabelle~\ref{tab:vergleich})
 \end{itemize}
 
 \subsection{Nicht aktivierter Standardablauf}
-Die auskommentierte 10-Runden-Variante in \asm{Ablauf\_V.asm} und \asm{Ablauf\_E.asm} ist nicht freigeschaltet. Sie braucht über die jetzt verfügbaren \asm{ShiftColumn}-PROCs hinaus Anpassungen (Reihenfolge von Schlüsselanwendung und Runden, Rundenschleife); eine Umstellung ändert das Chiffrat vollständig.
+Die auskommentierte 10-Runden-Variante in \asm{Ablauf_V.asm} und \asm{Ablauf_E.asm} ist nicht freigeschaltet. Sie braucht über die jetzt verfügbaren \asm{ShiftColumn}-PROCs hinaus Anpassungen (Reihenfolge von Schlüsselanwendung und Runden, Rundenschleife); eine Umstellung ändert das Chiffrat vollständig.
 
 \subsection{Eingabe}
 \begin{itemize}[noitemsep]
@@ -22,13 +22,13 @@ Die auskommentierte 10-Runden-Variante in \asm{Ablauf\_V.asm} und \asm{Ablauf\_E
 \end{itemize}
 
 \subsection{Schlüssel}
-Ein eingegebener Schlüssel überschreibt \asm{Rundenschluessel\_0} bis zum Programmende; der Standardschlüssel wird nicht gesichert. Wer wieder den Standard braucht, muss das Programm neu starten.
+Ein eingegebener Schlüssel überschreibt \asm{Rundenschluessel_0} bis zum Programmende; der Standardschlüssel wird nicht gesichert. Wer wieder den Standard braucht, muss das Programm neu starten.
 
 \subsection{Maus-Handler}
 \asm{MausPosiProc} verwendet das Datensegment, ohne \asm{DS} zu setzen. In der DOS-Box funktioniert das; bei anderen Treibern kann \asm{DS} auf das Treibersegment zeigen. Eine robuste Fassung beginnt mit \asm{PUSH DS}, \asm{MOV AX, @DATA}, \asm{MOV DS, AX} und endet mit \asm{POP DS}.
 
 \subsection{Kleinere Auffälligkeiten}
-Im Schlüsselteil von \asm{Ent\_Code.asm} springt \asm{ESC} nach \asm{ReturnVersch} statt nach \asm{ReturnEntsch}; beide Labels räumen gleich auf, daher hat das keine Folgen. \asm{Rundenanzahl} (Wert 10) wird im aktiven Ablauf nicht benutzt. \asm{ISR.asm} ist nur ein Beispiel für das Eintragen einer eigenen Interrupt-Service-Routine.
+Im Schlüsselteil von \asm{Ent_Code.asm} springt \asm{ESC} nach \asm{ReturnVersch} statt nach \asm{ReturnEntsch}; beide Labels räumen gleich auf, daher hat das keine Folgen. \asm{Rundenanzahl} (Wert 10) wird im aktiven Ablauf nicht benutzt. \asm{ISR.asm} ist nur ein Beispiel für das Eintragen einer eigenen Interrupt-Service-Routine.
 
 \subsection{Stand der Prüfung}
 Die Algorithmen (S-Box, Schlüsselexpansion, \asm{ShiftRow}, MixColumns und Inverse, Roundtrip mit Standard- und eigenem Schlüssel) wurden an einem Python-Nachbau gegen die AES-Referenz und untereinander geprüft (Kapitel~\ref{sec:tests}). \textbf{Das Übersetzen mit TASM und der Lauf in der DOS-Box sind für Version~2.0.0 noch von Hand zu bestätigen.}

@@ -1,21 +1,23 @@
-% Ehemals Anleitung.pdf
+% Ehemals Anleitung.pdf -- auf Version 2.0.0 gebracht
 \section{Kurze Anleitung}\label{sec:anleitung}
 \textit{Abschlussprojekt Modul \glqq Assemblerprogrammierung\grqq{} von Konstantin Blechschmidt \& Tim M.\ Kretzschmar}
 
-Nach dem Start des Programms mittels \asm{start.bat} oder \asm{aes.bat} kann per Mausklick auf die \glqq Entschluesselung\grqq{} oder \glqq Verschluesselung\grqq{} Bereiche das jeweilige gestartet werden. Dazu findet nun die Eingabe der jeweiligen Texte statt. Bei der Verschlüsselung natürlich der Klartext und bei der Entschlüsselung der Hexadezimalwert des Chiffretextes.
+\subsection{Ablauf einer Ver- oder Entschlüsselung}
+\begin{enumerate}[label=\arabic*.,noitemsep]
+    \item Das Programm wird mit \asm{start.bat} oder \asm{aes.bat} gestartet (Kapitel~\ref{sec:batch}). Es erscheint der Hauptbildschirm mit den beiden Schaltflächen.
+    \item Mit einem Mausklick auf \glqq Verschluesselung\grqq{} oder \glqq Entschluesselung\grqq{} wird der jeweilige Eingabebildschirm geöffnet.
+    \item Es folgt die Eingabe des Textes: bei der Verschlüsselung der Klartext (bis zu 64 Zeichen), bei der Entschlüsselung der Chiffretext als Hexadezimalwerte (64 Bytes = 128 Ziffern, aufgeteilt auf zwei Zeilen zu je 64 Ziffern). Danach einmal \asm{Enter} drücken.
+    \item Anschließend kann ein Schlüssel eingegeben werden. Das muss aber nicht geschehen, da ein vordefinierter Schlüssel im Programm existiert; in diesem Fall sofort \asm{Enter} drücken. Ein eigener Schlüssel ist ebenfalls hexadezimal einzugeben (bis zu 128 Ziffern = 64 Bytes, zwei Zeilen zu je 64 Ziffern).
+    \item Mit dem zweiten \asm{Enter} beginnt die Ver- bzw.\ Entschlüsselung. Das Ergebnis wird auf dem neu gezeichneten Bildschirm ausgegeben: bei der Verschlüsselung Klartext und Chiffretext (hexadezimal), bei der Entschlüsselung der Klartext (ASCII-Zeichen).
+    \item Mit \asm{ESC} gelangt man jederzeit zum Hauptbildschirm zurück. \asm{ESC} im Hauptbildschirm beendet das Programm.
+\end{enumerate}
 
-Nun muss einmal die Enter-Taste betätigt werden.
-
-Anschließend kann ein Schlüssel eingegeben werden. Dies muss aber nicht geschehen, da ein vordefinierter Schlüssel im Programm existiert. Bei dem Wunsch, einen eigenen Schlüssel zu verwenden, ist dieser ebenfalls hexadezimal einzugeben.
-
-Nun muss erneut die Enter-Taste betätigt werden, wodurch die Ver-/Entschlüsselung beginnt und anschließend auf dem neugezeichneten Bildschirm ausgegeben wird.
-
-Sollte am Ende oder zwischendurch der Wunsch zur Rückkehr zum Hauptbildschirm eintreten, so ist dies mit der Betätigung der ESC-Taste jederzeit realisierbar.
-
-\subsection*{Hinweise}
+\subsection{Hinweise}
 \begin{itemize}[noitemsep]
-    \item Die hexadezimale Eingabe akzeptiert die Ziffern 0 bis 9 und groß A bis F.
-    \item Der verschlüsselte Text erscheint hexadezimal, der entschlüsselte in ASCII-Zeichen.
+    \item Die hexadezimale Eingabe akzeptiert die Ziffern 0 bis 9 und \emph{groß} A bis F; Kleinbuchstaben und andere Tasten werden ignoriert.
+    \item \textbf{Eigener Schlüssel (neu in Version~2.0.0).} Ein eingegebener Schlüssel wird jetzt tatsächlich für die Rechnung verwendet. In Version~1.0 wurde er zwar angezeigt, aber nicht angewandt. Zum Entschlüsseln muss derselbe Schlüssel wie beim Verschlüsseln eingegeben werden.
+    \item Wird nur ein Teil des Schlüssels eingegeben, ersetzt er die ersten Bytes des Standardschlüssels; die restlichen Bytes bleiben unverändert. Eine begonnene, aber nicht vollständige Ziffer (ungerade Anzahl) wird verworfen.
+    \item Ein einmal eingegebener Schlüssel bleibt bis zum Programmende erhalten. Wer danach wieder den Standardschlüssel braucht, muss das Programm neu starten (Abschnitt~\ref{sec:einschraenkungen}).
+    \item Der verschlüsselte Text erscheint hexadezimal, der entschlüsselte in ASCII-Zeichen. Der Chiffretext ist immer 64 Bytes lang, auch bei kurzem Klartext.
+    \item Mit Version~1.0 erzeugte Chiffretexte lassen sich mit Version~2.0.0 nicht mehr vollständig entschlüsseln, weil sich durch den Fehler in \asm{ShiftRow} die Bytes 48 bis 63 und durch die S-Box-Korrektur einzelne Werte ändern (Kapitel~\ref{sec:aenderungen}).
 \end{itemize}
-% TODO v2.0.0: Eigene Schluessel werden seit 2.0.0 tatsaechlich verwendet
-% (SchluesselInitialisieren wird nach der Eingabe aufgerufen).

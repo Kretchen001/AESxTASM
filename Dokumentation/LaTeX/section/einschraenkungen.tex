@@ -1,0 +1,34 @@
+% Neu in Version 2.0.0 (Grundlage: Dokumentation/Ablaufplan.md, Abschnitt 13)
+\section{Bekannte Einschränkungen}\label{sec:einschraenkungen}
+Dieser Abschnitt hält fest, was das Programm \emph{nicht} leistet und wo es Besonderheiten gibt. Er ist ausdrücklich Teil der Dokumentation, weil das Ergebnis sonst überschätzt werden könnte.
+
+\subsection{Sicherheit}
+Das Verfahren ist \textbf{AES-ähnlich, nicht AES} (Tabelle~\ref{tab:vergleich}) und nicht für den Schutz echter Daten geeignet:
+\begin{itemize}[noitemsep]
+    \item Es gibt nur zwei Runden und \emph{keine MixColumns-Stufe im aktiven Ablauf}. Damit fehlt die \emph{Diffusion}: Ein Klartextbyte beeinflusst genau ein Chiffretextbyte (die Position ändert sich durch \asm{ShiftRow}, der Wert nur durch S-Box und \asm{XOR}). Im Kern ist das Verfahren eine positionsabhängige Byte-Substitution.
+    \item Der Standardschlüssel steht im Quelltext.
+    \item Die Auffüllbytes (\asm{00h}) werden mitverschlüsselt. Das Chiffrat hat deshalb immer 64 Bytes, und die Nullbytes erscheinen als Bytes, die nur vom Schlüssel und von der Position abhängen -- das verrät die Textlänge.
+\end{itemize}
+
+\subsection{Nicht aktivierter Standardablauf}
+Die auskommentierte 10-Runden-Variante in \asm{Ablauf\_V.asm} und \asm{Ablauf\_E.asm} ist nicht freigeschaltet. Sie braucht über die jetzt verfügbaren \asm{ShiftColumn}-PROCs hinaus Anpassungen (Reihenfolge von Schlüsselanwendung und Runden, Rundenschleife); eine Umstellung ändert das Chiffrat vollständig.
+
+\subsection{Eingabe}
+\begin{itemize}[noitemsep]
+    \item Es gibt kein Backspace. Sondertasten (z.\,B.\ Pfeiltasten, bei denen \asm{AL} $=0$ ist) werden im Klartext als \asm{00h} aufgenommen.
+    \item Bei der Entschlüsselung hat der Buchstabenzweig (\asm{A}\ldots\asm{F}) keine Zeilenumbruch- und keine Längenprüfung. Wer Ziffern und Buchstaben mischt, kann am Zeilenende über den Rahmen hinaus schreiben und mit mehr als 128 Ziffern den 65-Byte-\asm{TastaturBuffer} überlaufen lassen.
+    \item Kleinbuchstaben \asm{a}\ldots\asm{f} werden bei Hexeingaben nicht akzeptiert.
+    \item \asm{INT 16h}, Funktion \asm{1}, prüft nur, ob eine Taste vorliegt, entnimmt sie aber nicht, und das Zero-Flag wird in der \asm{Endlosschleife} nicht ausgewertet. Eine im Hauptbildschirm gedrückte Taste kann später als erstes Zeichen der nächsten Eingabe auftauchen.
+\end{itemize}
+
+\subsection{Schlüssel}
+Ein eingegebener Schlüssel überschreibt \asm{Rundenschluessel\_0} bis zum Programmende; der Standardschlüssel wird nicht gesichert. Wer wieder den Standard braucht, muss das Programm neu starten.
+
+\subsection{Maus-Handler}
+\asm{MausPosiProc} verwendet das Datensegment, ohne \asm{DS} zu setzen. In der DOS-Box funktioniert das; bei anderen Treibern kann \asm{DS} auf das Treibersegment zeigen. Eine robuste Fassung beginnt mit \asm{PUSH DS}, \asm{MOV AX, @DATA}, \asm{MOV DS, AX} und endet mit \asm{POP DS}.
+
+\subsection{Kleinere Auffälligkeiten}
+Im Schlüsselteil von \asm{Ent\_Code.asm} springt \asm{ESC} nach \asm{ReturnVersch} statt nach \asm{ReturnEntsch}; beide Labels räumen gleich auf, daher hat das keine Folgen. \asm{Rundenanzahl} (Wert 10) wird im aktiven Ablauf nicht benutzt. \asm{ISR.asm} ist nur ein Beispiel für das Eintragen einer eigenen Interrupt-Service-Routine.
+
+\subsection{Stand der Prüfung}
+Die Algorithmen (S-Box, Schlüsselexpansion, \asm{ShiftRow}, MixColumns und Inverse, Roundtrip mit Standard- und eigenem Schlüssel) wurden an einem Python-Nachbau gegen die AES-Referenz und untereinander geprüft (Kapitel~\ref{sec:tests}). \textbf{Das Übersetzen mit TASM und der Lauf in der DOS-Box sind für Version~2.0.0 noch von Hand zu bestätigen.}

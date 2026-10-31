@@ -1,0 +1,137 @@
+% Kapitel 4 -- Durchgehendes Beispiel "Hallo" (neu in Version 2.0.0)
+\section{Durchgehendes Beispiel: der Text \glqq Hallo\grqq}\label{sec:ablauf-beispiel}
+Dieses Kapitel verfolgt einen Klartext durch alle Schritte: von der Tasteneingabe über die neun Rechenschritte der Verschlüsselung und die Hexausgabe bis zur Rückrechnung. Verwendet werden der Klartext \texttt{Hallo} und der \emph{Standardschlüssel} aus der \asm{config.asm}; der Schlüssel wird also nicht eingegeben (sofort \asm{Enter}).
+
+\textbf{Herkunft der Zahlen.} Alle Werte sind aus dem Quelltext (\asm{config.asm}, \asm{SBOX.asm}) mit einem Python-Modell berechnet, das die Assembler-Prozeduren Schritt für Schritt nachbildet. Das Programm selbst wurde dafür nicht in der DOS-Box ausgeführt. Wer das Beispiel dort nachstellt, sollte genau die Hexwerte aus Abschnitt~\ref{sec:beispiel-ausgabe} sehen.
+
+%------------------------------------------------------------------------------
+\subsection{Eingabe}
+Nach dem Klick auf \glqq Verschlüsseln\grqq{} liest \asm{Ver\_Code.asm} die Tasten. \asm{DI} startet bei \asm{1936} (Zeile 12, Spalte 8; Abschnitt~\ref{sec:video}).
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Tasteneingabe \glqq Hallo\grqq}\label{tab:beispiel-eingabe}
+    \begin{tabular}{@{}lccccl@{}}
+        \toprule
+        Taste & \asm{AL} & Bildschirmwort \asm{AX} & \asm{DI} & \asm{SI} danach & Puffer \\
+        \midrule
+        \texttt{H} & \asm{48h} & \asm{0F48h} & 1936 & 1 & \asm{[0]=48h} \\
+        \texttt{a} & \asm{61h} & \asm{0F61h} & 1938 & 2 & \asm{[1]=61h} \\
+        \texttt{l} & \asm{6Ch} & \asm{0F6Ch} & 1940 & 3 & \asm{[2]=6Ch} \\
+        \texttt{l} & \asm{6Ch} & \asm{0F6Ch} & 1942 & 4 & \asm{[3]=6Ch} \\
+        \texttt{o} & \asm{6Fh} & \asm{0F6Fh} & 1944 & 5 & \asm{[4]=6Fh} \\
+        \asm{Enter} & \asm{0Dh} & -- & -- & 5 & \asm{[5..63]=00h} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Der Zustand ist damit \asm{48 61 6C 6C 6F 00 00 00 \ldots}: fünf Textbytes und 59 Nullbytes. Ein sofortiges \asm{Enter} in der Schlüsseleingabe springt zu \asm{AufrufenVerAusASM}; \asm{SchluesselInitialisieren} kopiert den Standardschlüssel nach \asm{Rundenschluessel\_Expand} und setzt die Rundenkonstante auf \hexo{5F}.
+
+%------------------------------------------------------------------------------
+\subsection{Die Rundenschlüssel}
+Die Expansion (Abschnitt~\ref{sec:vers-schluessel}) liefert aus dem Standardschlüssel $K_0$ zuerst $K_1$ (Konstante \hexo{5F}), dann $K_2$ (Konstante \hexo{BE}). Die ersten acht Bytes sind:
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Die ersten acht Bytes der Schlüssel}\label{tab:beispiel-keys}
+    \begin{tabular}{@{}lcccccccc@{}}
+        \toprule
+        & [0] & [1] & [2] & [3] & [4] & [5] & [6] & [7] \\
+        \midrule
+        $K_0$ & 51 & DB & AD & CF & 83 & 9F & BD & 27 \\
+        $K_1$ & 65 & BE & 13 & DC & 5F & C0 & 7D & 5A \\
+        $K_2$ & 7A & C4 & D7 & 0B & 54 & 94 & E9 & B3 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Beispiel für $K_1[0]$: $\hexo{51}\oplus S(K_0[63])\oplus\hexo{5F}$ mit $K_0[63]=\hexo{05}$ und $S(\hexo{05})=\hexo{6B}$ ergibt $\hexo{65}$. Danach $K_1[1]=\hexo{65}\oplus K_0[1]=\hexo{65}\oplus\hexo{DB}=\hexo{BE}$. Die Konstante wird dabei von \hexo{5F}$=0101\,1111_2$ per \asm{ROL} um ein Bit auf \hexo{BE}$=1011\,1110_2$ rotiert.
+
+%------------------------------------------------------------------------------
+\subsection{Die neun Schritte}
+Tabelle~\ref{tab:beispiel-zustand} zeigt die ersten acht Zustandsbytes (\asm{Pos 0} bis \asm{Pos 7}, das sind Zeile~0 und Zeile~1 des ersten Blocks) nach jedem Schritt aus Tabelle~\ref{tab:ablauf-v}. Die Schritte 2 und 6 (Expansion) ändern den Zustand nicht und fehlen.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Zustand \asm{Pos 0} bis \asm{Pos 7} nach jedem Schritt (Verschlüsselung \glqq Hallo\grqq)}\label{tab:beispiel-zustand}
+    \begin{tabular}{@{}llcccccccc@{}}
+        \toprule
+        Schritt & Aufruf & [0] & [1] & [2] & [3] & [4] & [5] & [6] & [7] \\
+        \midrule
+        -- & Klartext & 48 & 61 & 6C & 6C & 6F & 00 & 00 & 00 \\
+        1 & \asm{SBOXSubstitution} & 52 & EF & 50 & 50 & A8 & 63 & 63 & 63 \\
+        3 & \asm{XOR} $K_1$ & 37 & 51 & 43 & 8C & F7 & A3 & 1E & 39 \\
+        4 & \asm{ShiftRow} & 37 & 51 & 43 & 8C & A3 & 1E & 39 & F7 \\
+        5 & \asm{SBOXSubstitution} & 9A & D1 & 1A & 64 & 0A & 72 & 12 & 68 \\
+        7 & \asm{XOR} $K_2$ & E0 & 15 & CD & 6F & 5E & E6 & FB & DB \\
+        8 & \asm{ShiftRow} & E0 & 15 & CD & 6F & E6 & FB & DB & 5E \\
+        9 & \asm{SBOXSubstitution} & E1 & 59 & BD & A8 & 8E & 0F & B9 & 58 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Zeile~0 (\asm{Pos 0}--\asm{3}) wird von \asm{ShiftRow} nicht verändert, Zeile~1 (\asm{Pos 4}--\asm{7}) um eine Stelle nach links rotiert: In Schritt~4 wandert \hexo{F7} von \asm{Pos 4} nach \asm{Pos 7}, in Schritt~8 \hexo{DB} von \asm{Pos 7} nach \asm{Pos 6}. Die Zeilen~2 und~3 des Blocks (\asm{Pos 8}--\asm{15}) werden um zwei bzw.\ drei Stellen rotiert (Abschnitt~\ref{sec:vers-shiftrow}).
+
+\textbf{Zwei Bytes im Detail.} Das \glqq H\grqq{} (\asm{Pos 0}) bleibt bei \asm{ShiftRow} an seiner Stelle, das \glqq o\grqq{} (zuerst \asm{Pos 4}) wandert:
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Der Weg des \glqq H\grqq{} und des \glqq o\grqq}\label{tab:beispiel-ho}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        Schritt & \glqq H\grqq{} (\asm{Pos 0}) & \glqq o\grqq{} \\
+        \midrule
+        Klartext & \hexo{48} & \asm{Pos 4}: \hexo{6F} \\
+        1 S-Box & $S(\hexo{48})=\hexo{52}$ & $S(\hexo{6F})=\hexo{A8}$ \\
+        3 XOR $K_1$ & $\hexo{52}\oplus\hexo{65}=\hexo{37}$ & $\hexo{A8}\oplus K_1[4]\,(\hexo{5F})=\hexo{F7}$ \\
+        4 ShiftRow & bleibt \asm{Pos 0} & \asm{Pos 4} $\to$ \asm{Pos 7} \\
+        5 S-Box & $S(\hexo{37})=\hexo{9A}$ & $S(\hexo{F7})=\hexo{68}$ \\
+        7 XOR $K_2$ & $\hexo{9A}\oplus K_2[0]\,(\hexo{7A})=\hexo{E0}$ & $\hexo{68}\oplus K_2[7]\,(\hexo{B3})=\hexo{DB}$ \\
+        8 ShiftRow & bleibt \asm{Pos 0} & \asm{Pos 7} $\to$ \asm{Pos 6} \\
+        9 S-Box & $S(\hexo{E0})=\hexo{E1}$ & $S(\hexo{DB})=\hexo{B9}$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Aus \glqq H\grqq{} wird \hexo{E1} an \asm{Pos 0}, aus \glqq o\grqq{} wird \hexo{B9} an \asm{Pos 6}. Die Nullbytes (\asm{Pos 5}--\asm{63}) werden mitverschlüsselt und erscheinen als scheinbar zufällige Bytes, deshalb ist das Chiffrat immer 64 Bytes lang.
+
+%------------------------------------------------------------------------------
+\subsection{Ausgabe als Hexwerte}\label{sec:beispiel-ausgabe}
+\asm{ErgebnisAusgabeVer} zeigt den Klartext aus \asm{TastaturBufferOrg} und das Chiffrat als 128 Hexziffern in zwei Zeilen zu je 64 (ab Offset \asm{2576} und \asm{2736}):
+
+\begin{lstlisting}[language={},caption={Chiffrat von \texttt{Hallo} mit dem Standardschlüssel (64 Bytes)},label={lst:beispiel-chiffrat}]
+E159BDA88E0FB958AA4DF3D15667AD0013BB19720FE93893BD6D3C6F4F5F5F55
+6C6F54B35C31772729100D090EA23AA57A1DB20902CD8E80311DA85033765168
+\end{lstlisting}
+
+\textbf{Ein Byte als zwei Ziffern}, am Beispiel \hexo{E1}: Beim ersten Durchlauf (\asm{CL}$=0$) wird das Byte in \asm{DL} gemerkt und \asm{SHR AL, 4} ergibt \asm{0Eh}. Da $\mathtt{0Eh}>9$ ist, wird \asm{7} addiert (\asm{15h}); \asm{ADD AL, 48} ergibt \asm{45h} $=$ \glqq E\grqq. Beim zweiten Durchlauf wird das obere Nibble in \asm{DL} auf 0 gesetzt (\asm{SHR DL, 4}, \asm{SHL DL, 4}: \asm{E1h}$\to$\asm{E0h}), \asm{SUB AL, DL} bleibt \asm{01h}, und mit \asm{ADD AL, 48} wird daraus \asm{31h} $=$ \glqq 1\grqq.
+
+%------------------------------------------------------------------------------
+\subsection{Entschlüsselung}
+Gibt man das Chiffrat aus Listing~\ref{lst:beispiel-chiffrat} in den Entschlüsselungsbildschirm ein, läuft Tabelle~\ref{tab:ablauf-e} ab. Pro Ziffernpaar entsteht ein Byte: Für \glqq E\grqq{} und \glqq 1\grqq{} ergibt \asm{SHL DL, 4} aus dem umgerechneten Wert \asm{3Eh} das Byte \asm{E0h} (die \asm{3} fällt heraus), \asm{SHL AL, 4} und \asm{SHR AL, 4} lassen von \asm{31h} die \asm{01h} übrig, und \asm{ADD AL, DL} liefert \asm{E1h}.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Rückrechnung von \asm{Pos 0} und \asm{Pos 6}}\label{tab:beispiel-rueck}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        Schritt (Tabelle~\ref{tab:ablauf-e}) & \asm{Pos 0} & \asm{Pos 6} (das \glqq o\grqq) \\
+        \midrule
+        Chiffrat & \hexo{E1} & \hexo{B9} \\
+        1 inverse S-Box & $S^{-1}(\hexo{E1})=\hexo{E0}$ & $S^{-1}(\hexo{B9})=\hexo{DB}$ \\
+        2 \asm{ShiftRow_1} & bleibt & \asm{Pos 6} $\to$ \asm{Pos 7} \\
+        5 XOR $K_2$ & $\hexo{E0}\oplus\hexo{7A}=\hexo{9A}$ & $\hexo{DB}\oplus K_2[7]\,(\hexo{B3})=\hexo{68}$ \\
+        6 inverse S-Box & $S^{-1}(\hexo{9A})=\hexo{37}$ & $S^{-1}(\hexo{68})=\hexo{F7}$ \\
+        7 \asm{ShiftRow_1} & bleibt & \asm{Pos 7} $\to$ \asm{Pos 4} \\
+        10 XOR $K_1$ & $\hexo{37}\oplus\hexo{65}=\hexo{52}$ & $\hexo{F7}\oplus K_1[4]\,(\hexo{5F})=\hexo{A8}$ \\
+        11 inverse S-Box & $S^{-1}(\hexo{52})=\hexo{48}=$ \glqq H\grqq & $S^{-1}(\hexo{A8})=\hexo{6F}=$ \glqq o\grqq \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Die Nullbytes kommen als \asm{00h} zurück; die Ausgabe (\asm{BildschirmVar} $=5$) schreibt alle 64 Bytes als Zeichen, \asm{00h} erscheint als Leerstelle. Die Rückrechnung funktioniert nur, wenn \asm{s\_1\_0} die exakte Umkehrung von \asm{s\_0} ist; deshalb war die Korrektur des Tabelleneintrags \asm{70h} in Version 2.0.0 notwendig (Abschnitt~\ref{sec:sbox}).

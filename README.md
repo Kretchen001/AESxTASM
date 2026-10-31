@@ -28,7 +28,9 @@ Bitte nur in der DOS Box Umgebung starten!
 --Dokumentation--
 
   Dokumentation/Ablaufplan.md   (Ablaufplan mit Rechenbeispiel: welches Register, wohin, welcher Befehl)
-  Dokumentation/*.pdf           (Handbuch, Anleitung, Entwurfsskizze, Tests)
+  Dokumentation/LaTeX/          (Handbuch, Anleitung, Funktionalitaet, Entwurfsskizze, Tests als LaTeX)
+                                 Kompilieren mit pdflatex + biber: siehe Kopf von Dokumentation/LaTeX/main.tex
+                                 Die alten PDFs wurden durch dieses Projekt ersetzt.
 
 --Version 2.0.0--
 

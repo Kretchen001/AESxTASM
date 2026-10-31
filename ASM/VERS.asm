@@ -55,8 +55,8 @@ RundenschluesselXOR:
 SchluesselAnwenden ENDP
 
 ; Berechnet den aktuellen Rundenschluessel mit folgender Fkt.
-;       k i+1,j = k i,j XOR subst(k i,63) XOR Konstante [aus der config.asm]  ; fuer den ersten Wert
-;       k i,j+1 = k i,j XOR k i,j-1                                           ; fuer die anderen Werte
+;       k'[0] = k[0] XOR S-Box(k[63]) XOR Rundekonstante   ; fuer den ersten Wert (k[63] = ALTES letztes Byte)
+;       k'[j] = k'[j-1] XOR k[j]   (j = 1..63)             ; k'[j-1] ist schon NEU berechnet (Praefix-XOR)
 Schluesselexpansion PROC FAR
         PUSH AX BX CX DX DI
 

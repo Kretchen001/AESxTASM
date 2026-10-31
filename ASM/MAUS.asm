@@ -14,18 +14,16 @@
 ;       Dabei gibt es drei Faelle:
 ;                   1) Es wurde kein Aktionsbereich getroffen
 ;                       -> Mache nichts, springe sofort zum PosiStimmtNicht-Label
-;                   2) Es wurder der Bereich "Entschluesseln" getroffen
-;                       -> trage in den bool_Ent_Ver eine "1" ein, schreibe
-;                          die initial-Konstante in die Rundenkonstante, schiebe
-;                          den Grundschluessel in den Rundenschluessel_Expand
-;                          (damit dieser auf keinen Fall leer ist) und rufe
-;                          die BildschirmProc2 auf (Entschluesel-Bildschirm)
-;                   3) Es wurder der Bereich "Verschluesseln" getroffen
-;                       -> trage in den bool_Ent_Ver eine "2" ein, schreibe
-;                          die initial-Konstante in die Rundenkonstante, schiebe
-;                          den Grundschluessel in den Rundenschluessel_Expand
-;                          (damit dieser auf keinen Fall leer ist) und rufe
-;                          die BildschirmProc3 auf (Verschluesel-Bildschirm)
+;                   2) Es wurde der Bereich "Entschluesseln" getroffen
+;                       -> trage in den bool_Ent_Ver eine "1" ein, setze
+;                          BildschirmVar auf 2 und rufe BildschirmProcX auf
+;                          (Entschluesseln-Eingabebildschirm)
+;                   3) Es wurde der Bereich "Verschluesseln" getroffen
+;                       -> trage in den bool_Ent_Ver eine "2" ein, setze
+;                          BildschirmVar auf 3 und rufe BildschirmProcX auf
+;                          (Verschluesseln-Eingabebildschirm)
+;       Der Schluessel wird hier NICHT angefasst: SchluesselInitialisieren wird
+;       in AES.asm und nach der Schluesseleingabe (Ver_Code/Ent_Code) aufgerufen.
 ;===========================================================================
 ; Inhalt:
 ;         - MausPosiProc (PROC)

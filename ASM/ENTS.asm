@@ -86,8 +86,9 @@ ShiftRow_1 PROC FAR
 
 ChangeBlock:
         MOV DI, 0             ; Zähler für die gerade zu bearbeitende Zeile des Blockes
-        INC CX
-        CMP CX, 4             ; 4 Bloecke durchgegangen?
+        INC CX                ; CX zaehlt ab 1 -> der 1. Block wird mit CX = 1 bearbeitet
+        CMP CX, 5             ; Erst bei CX = 5 sind alle 4 Bloecke (CX = 1..4) durchgegangen
+                              ; (frueher CMP CX, 4 -> nur 3 Bloecke, Bytes 48..63 blieben unverschoben)
         JE EndeShiftRow
 
 TastaturBufferInit:

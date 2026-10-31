@@ -2,9 +2,8 @@
 \section{Entwurfsskizze}\label{sec:entwurfsskizze}
 \textit{Abschlussprojekt Modul \glqq Assemblerprogrammierung\grqq{} von Konstantin Blechschmidt \& Tim M.\ Kretzschmar}
 
-% TODO v2.0.0: Teile dieses Entwurfs sind ueberholt (siehe Kommentare in
-% funktionalitaet.tex).
-Unser Programm kann in 2 Hauptbereiche mit je 2 Unterbereichen aufgeteilt werden.
+\subsection{Entwurf der Abgabe (Version 1.0)}
+Unser Programm kann in 2 Hauptbereiche mit je 2 Unterbereichen aufgeteilt werden. Diese Aufteilung gilt unverändert auch für Version~\versionProjekt.
 
 \begin{description}[labelwidth=1cm,leftmargin=1.4cm,style=nextline]
     \item[I.\ Verschlüsselung]
@@ -33,14 +32,24 @@ Unser Programm kann in 2 Hauptbereiche mit je 2 Unterbereichen aufgeteilt werden
     \label{fig:entw-uebersicht}
 \end{figure}
 
-Jede \asm{PROC} und jeder Programmteil ist im Kopfbereich der ASM-Datei und im Handbuch näher beschrieben. Eine möglichst klare Erläuterung der jeweiligen Befehlszeilen befindet sich ebenfalls in den ASM-Dateien als Kommentar.
+Jede \asm{PROC} und jeder Programmteil ist im Kopfbereich der ASM-Datei und in Kapitel~\ref{sec:asm-dateien} näher beschrieben. Eine möglichst klare Erläuterung der jeweiligen Befehlszeilen befindet sich ebenfalls in den ASM-Dateien als Kommentar. Bezüglich der Variablen existieren die \asm{config.asm} und \asm{SBOX.asm}. Dort kann in den Kommentaren Näheres zu deren Einsatz erfahren werden, sowie eine Übersicht in Abschnitt~\ref{sec:asm-dateien} eingesehen werden.
 
-% TODO v2.0.0: Die folgenden zwei Absaetze beschreiben den Stand 1.x (inverse
-% ShiftColumn nicht lauffaehig, AES-konformer Code auskommentiert). Seit 2.0.0
-% sind ShiftColumn/ShiftColumn_1 (MixColumns + Inverse) implementiert; ob sie in
-% Ablauf_V.asm/Ablauf_E.asm aktiviert sind, bitte im Quelltext pruefen.
-Leider können wir die echte Version von AES nicht vorzeigen, da es uns nicht möglich war, die inverse \asm{ShiftColumn} zu implementieren. Die Verrechnung mit der inversen C-Matrix aus E, D, B, 9 (alles hexadezimale Werte) haben wir programmiert, aber das Ergebnis war nach mehreren Versuchen immer noch falsch.
+\textbf{Stand 1.0 (2021).} Wir konnten damals die echte Version von AES nicht vorzeigen, da es uns nicht möglich war, die inverse \asm{ShiftColumn} zu implementieren. Die Verrechnung mit der inversen C-Matrix aus E, D, B, 9 (alles hexadezimale Werte) hatten wir programmiert, aber das Ergebnis war nach mehreren Versuchen immer noch falsch. Deshalb steht unter dem Quelltext von \asm{Ablauf\_E.asm} und \asm{Ablauf\_V.asm} der auskommentierte Code für den Ablauf nach AES-Standard. Der nicht auskommentierte Code darüber wendet die verfügbaren und nutzbaren Aspekte von AES an, bietet dem Nutzer also eine Verschlüsselung, die AES-ähnlich ist. Die damals mitgelieferte \asm{AES.EXE} enthielt diese AES-ähnliche Umsetzung.
 
-Aus diesem Grund befindet sich unter dem Quelltext von der \asm{Ablauf_E.asm} und \asm{Ablauf_V.asm} der auskommentierte Code, der für den Ablauf nach AES-Standard vorgesehen wäre. Der nicht auskommentierte Code darüber soll die verfügbaren und nutzbaren Aspekte von AES anwenden, also dem Nutzer eine Verschlüsselung bieten, die AES-ähnlich ist. Die schon kompilierte \asm{AES.EXE} beinhaltet diese AES-ähnliche Umsetzung.
+%------------------------------------------------------------------------------
+\subsection{Weiterentwicklung in Version \versionProjekt}\label{sec:entwurf-v2}
+Die Struktur aus dem Entwurf blieb erhalten. Die Änderungen betreffen den Inhalt der Bausteine (Kapitel~\ref{sec:aenderungen}):
 
-Bezüglich der Variablen existieren die \asm{config.asm} und \asm{SBOX.asm}. Dort kann in den Kommentaren Näheres zu deren Einsatz erfahren werden, sowie eine Übersicht im Handbuch unter dem entsprechenden Absatz (Abschnitt~\ref{sec:asm-dateien}) eingesehen werden.
+\begin{itemize}[noitemsep]
+    \item \textbf{Inverse Spaltenrechnung.} Die Ursache des Scheiterns war die Multiplikation: \asm{MUL} rechnet mit ganzen Zahlen, gebraucht wird $\mathrm{GF}(2^8)$ (Abschnitt~\ref{sec:gf}). Neu ist daher die allgemeine Multiplikation \asm{GFMulPROC}; \asm{ShiftColumn\_1} liest die Matrix aus der Variablen \asm{InvMixMatrix} der \asm{config.asm}, statt sie in Befehle zu gießen.
+    \item \textbf{Bausteine getrennt von Ablauf.} Die Rechen-PROCs sind unabhängig voneinander getestet (Kapitel~\ref{sec:tests}); die Reihenfolge, in der sie laufen, steht allein in \asm{Ablauf\_V.asm} und \asm{Ablauf\_E.asm}. Diese Trennung aus dem ursprünglichen Entwurf hat die Korrekturen von 2.0.0 erleichtert, weil jede Korrektur genau eine PROC betraf.
+    \item \textbf{Schlüssel.} Die Eingabe schreibt in \asm{Rundenschluessel\_0}, die Rechnung nutzt \asm{Rundenschluessel\_Expand}; das Kopieren dazwischen erledigt \asm{SchluesselInitialisieren} und läuft jetzt \emph{nach} der Eingabe.
+    \item \textbf{Weiterhin AES-ähnlich.} Obwohl \asm{ShiftColumn} und \asm{ShiftColumn\_1} nun funktionieren, sind sie im aktiven Ablauf nicht eingebunden. Der aktive Ablauf wurde bewusst nicht umgebaut: Ein Einbinden oder die Umstellung auf den AES-Standardablauf ändert das Chiffrat vollständig (Abschnitt~\ref{sec:einschraenkungen}) und ist ein eigener Entwicklungsschritt. Die kompilierte \asm{AES.EXE} liegt nicht mehr im Repository (\asm{.gitignore}); sie entsteht mit \asm{asmaes.bat}.
+\end{itemize}
+
+\subsection{Offene Entwurfsfragen}
+\begin{itemize}[noitemsep]
+    \item Aktivierung des Standardablaufs (10~Runden, MixColumns in jeder Runde außer der letzten, Anfangs-Schlüsseladdition). Dazu gehören ein Rundenzähler, der \asm{Rundenanzahl} verwendet, und die Abstimmung zwischen \asm{Ablauf\_V.asm} und \asm{Ablauf\_E.asm}.
+    \item Eine Verkettung der Blöcke: Die vier Blöcke werden unabhängig voneinander behandelt (es gibt keine Blockbetriebsart wie CBC). Weil der 64-Byte-Schlüssel positionsabhängig wirkt, ergeben gleiche Klartextblöcke an verschiedenen Stellen zwar verschiedene Chiffreblöcke, aber ein Klartextbyte beeinflusst weiterhin nur ein Chiffrebyte.
+    \item Der DOS-Box-Lauf von Version~\versionProjekt\ (Abschnitt~\ref{sec:tests-dosbox}).
+\end{itemize}

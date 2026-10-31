@@ -1,0 +1,21 @@
+% Ehemals Anleitung.pdf
+\section{Kurze Anleitung}\label{sec:anleitung}
+\textit{Abschlussprojekt Modul \glqq Assemblerprogrammierung\grqq{} von Konstantin Blechschmidt \& Tim M.\ Kretzschmar}
+
+Nach dem Start des Programms mittels \asm{start.bat} oder \asm{aes.bat} kann per Mausklick auf die \glqq Entschluesselung\grqq{} oder \glqq Verschluesselung\grqq{} Bereiche das jeweilige gestartet werden. Dazu findet nun die Eingabe der jeweiligen Texte statt. Bei der Verschlüsselung natürlich der Klartext und bei der Entschlüsselung der Hexadezimalwert des Chiffretextes.
+
+Nun muss einmal die Enter-Taste betätigt werden.
+
+Anschließend kann ein Schlüssel eingegeben werden. Dies muss aber nicht geschehen, da ein vordefinierter Schlüssel im Programm existiert. Bei dem Wunsch, einen eigenen Schlüssel zu verwenden, ist dieser ebenfalls hexadezimal einzugeben.
+
+Nun muss erneut die Enter-Taste betätigt werden, wodurch die Ver-/Entschlüsselung beginnt und anschließend auf dem neugezeichneten Bildschirm ausgegeben wird.
+
+Sollte am Ende oder zwischendurch der Wunsch zur Rückkehr zum Hauptbildschirm eintreten, so ist dies mit der Betätigung der ESC-Taste jederzeit realisierbar.
+
+\subsection*{Hinweise}
+\begin{itemize}[noitemsep]
+    \item Die hexadezimale Eingabe akzeptiert die Ziffern 0 bis 9 und groß A bis F.
+    \item Der verschlüsselte Text erscheint hexadezimal, der entschlüsselte in ASCII-Zeichen.
+\end{itemize}
+% TODO v2.0.0: Eigene Schluessel werden seit 2.0.0 tatsaechlich verwendet
+% (SchluesselInitialisieren wird nach der Eingabe aufgerufen).

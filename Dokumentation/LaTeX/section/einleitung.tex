@@ -1,0 +1,22 @@
+% Ehemals AES.pdf, Kapitel 1
+\section{Einleitung}\label{sec:einleitung}
+AES wurde von Joan Daemen und Vincent Rijmen (unter dem Alias Rijndael) entwickelt. Es basiert auf dem Prinzip der symmetrischen Verschlüsselung und gilt mit seinen verschiedenen Standards als eines der besten Verschlüsselungsverfahren der Welt. Dies ist bedingt durch die Tatsache, dass bis heute kein effektiver Algorithmus gefunden wurde, welcher die Brute-Force-Methode zum Entschlüsseln des Chiffretextes umgeht. Da in absehbarer Zeit die Prozessorleistung keinen sonderlichen Leistungsschub mehr erhalten wird, ist die Schlüssellänge für die Sicherheit ausschlaggebend; also die Dauer der Entschlüsselung.
+
+Die hier als Assemblerprogramm umgesetzte Variante beruht auf dem Grundgedanken von AES. Sie erfolgt über eine Schlüssellänge von 64 Zeichen à 8 Bit (also 256 mögliche Werte (0..255), was der erweiterten ASCII-Tabelle entspricht). Somit erfolgt die Verschlüsselung nach folgender Grafik:
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.5\textheight,keepaspectratio]{images/schema_verschluesselung.png}
+    \caption{Schema Verschlüsselung mit AES -- Quelle: \cite{ceilers_ver}}
+    \label{fig:schema-ver-1}
+\end{figure}
+
+Und die Entschlüsselung nach diesem Muster:
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.5\textheight,keepaspectratio]{images/schema_entschluesselung.png}
+    % Im PDF stand hier faelschlich ebenfalls "Verschluesselung".
+    \caption{Schema Entschlüsselung mit AES -- Quelle: \cite{ceilers_ent}}
+    \label{fig:schema-ent-1}
+\end{figure}

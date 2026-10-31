@@ -1,0 +1,52 @@
+% Ehemals Deckblatt_und_Funktionalitaet.pdf
+\section{Funktionalität und Erklärung}\label{sec:funktionalitaet}
+\textit{Abschlussprojekt Modul \glqq Assemblerprogrammierung\grqq{} von Konstantin Blechschmidt \& Tim M.\ Kretzschmar}
+
+\subsection*{Daten}
+TASM; Prozessor .486; DOS-Box Version 0.74
+
+\subsection*{Was geht}
+% TODO v2.0.0: Seit 2.0.0 sind ShiftColumn invers (MixColumns-Inverse) implementiert,
+% der S-Box-Tippfehler und ShiftRow fuer den 4. Block behoben (im Python-Modell
+% verifiziert, TASM-Lauf steht noch aus).
+\begin{itemize}[noitemsep]
+    \item Grafik
+    \item Mausklicken um Modi zu wechseln
+    \item Eingabe/Ausgabe (Klartext (ASCII) und Hexadezimal)
+    \item Beenden über \glqq ESC\grqq{} aus dem Hauptmenü heraus
+    \item Schlüsselexpansion \& Schlüssel anwenden
+    \item SBOX-Substitution \& inverse Version
+    \item ShiftRow \& die inverse Version
+    \item ShiftColumn
+    \item Kompilieren, Debugger starten und einfaches Starten per Batch-Datei
+\end{itemize}
+
+\subsection*{Was geht nicht}
+\begin{itemize}[noitemsep]
+    \item Inverses ShiftColumn (haben wir leider nicht zum Laufen bekommen\ldots)\\
+    mögl.\ Quelle: \cite{fips197}
+\end{itemize}
+
+\subsection*{Eidesstattliche Erklärung}
+Hiermit bestätigen wir, Konstantin Blechschmidt \& Tim M.\ Kretzschmar, dass wir dieses Programm \glqq AES -- in TASM umgesetzt\grqq{} selbstständig und nur unter Angabe der genutzten Quellen erstellt und getestet haben.
+
+\vspace{3mm}
+
+\noindent
+\begin{minipage}{\textwidth}
+    \begin{minipage}[b]{0.52\textwidth}
+        \includegraphics[width=0.8\textwidth]{images/unterschrift_tim.png}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.44\textwidth}
+        Tim M.\ Kretzschmar\\(Wermsdorf, 03.08.2021)
+    \end{minipage}
+
+    \vspace{4mm}
+
+    \begin{minipage}[b]{0.52\textwidth}
+        \includegraphics[width=0.7\textwidth]{images/unterschrift_konstantin.png}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.44\textwidth}
+        Konstantin Blechschmidt\\(Schkeuditz, 03.08.2021)
+    \end{minipage}
+\end{minipage}\par

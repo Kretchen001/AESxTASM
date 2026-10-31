@@ -1,0 +1,397 @@
+% Ehemals AES.pdf, Kapitel 2
+% Hinweis: Stellen, die durch Version 2.0.0 (S-Box-Korrektur, ShiftRow,
+% eigener Schluessel, MixColumns + Inverse) inhaltlich ueberholt sind, sind mit
+% "% TODO v2.0.0" markiert. Der Text entspricht sonst dem urspruenglichen PDF.
+\section{Die ASM-Dateien und ihr Inhalt}\label{sec:asm-dateien}
+
+\textbf{HINWEIS:} Zu jeder Datei findet hier eine kurze Beschreibung statt. Meist ist jedoch die genauere Erklärung im Quelltext als Kommentar hinter den jeweiligen Befehlszeilen zu finden. Zusätzlich gibt es im Kopf jeder Datei eine Beschreibung, die diesem Werk ähnelt. Es soll lediglich dazu dienen, diese Kopf-Kommentare zu erweitern, noch besser zu strukturieren und einen allgemeinen Überblick zu erhalten.
+
+%------------------------------------------------------------------------------
+\subsection{Grafische Übersicht über alle ASM-Dateien}
+Hier sind alle ASM-Dateien aufgeführt. Gleichzeitig soll das Zusammenspiel der \asm{AES.asm}, der \asm{VER_Code.asm} und \asm{ENT_Code.asm}, sowie den \asm{Ablauf_V.asm} und \asm{Ablauf_E.asm} graphisch demonstriert werden, was im späteren Verlauf schriftlich erklärt wird.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/uebersicht_dateien.png}
+    \caption{Übersicht über die ASM-Dateien (SBOX, config, MAUS, BildPROC, ISR)}
+    \label{fig:uebersicht-dateien}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.55\textheight,keepaspectratio]{images/uebersicht_zusammenspiel.png}
+    \caption{Zusammenspiel von AES.asm, VER\_Code.asm, ENT\_Code.asm, VERS.asm und ENTS.asm}
+    \label{fig:uebersicht-zusammenspiel}
+\end{figure}
+
+%------------------------------------------------------------------------------
+\subsection{AES.asm}
+Hier findet die grundlegende Verwaltung des Ablaufes statt. Diese Datei kann man auch als \asm{main} bezeichnen. Im Folgenden wird auf die einzelnen Label und ihre Funktionalitäten näher eingegangen.
+
+\subsubsection{Beginn (Label)}
+Laden des Data-Segmentes in \asm{DS}. Im Data-Segment sind 2 \asm{INCLUDE}s vorhanden:
+\begin{enumerate}[label=\arabic*,noitemsep]
+    \item \asm{SBOX.asm}
+    \item \asm{config.asm}
+\end{enumerate}
+
+\subsubsection{Hauptbildschirm darstellen (Label)}
+Wie der Name schon erwarten lässt, wird hier der Hauptbildschirm gezeichnet. Dies geschieht über den Aufruf einer \asm{PROC} \asm{HauptbildschirmProc}. Davor wird jedoch ebenfalls noch in diesem Label die Maus-Klick-Funktion belegt. Dies geschieht durch das Freisetzen der beiden Primärmaustasten links und rechts, sowie dem Definieren des \asm{OFFSET}s der \asm{PROC} \asm{MausPosiProc}.
+
+\subsubsection{Endlosschleife (Label)}
+In der Endlosschleife wird auf einen Tastaturdruck gewartet (\asm{INT 16h}, Unterfunktion \asm{1h}). Nachdem dieser erfolgt ist, folgt ein \asm{CMP} mit dem Ziel, die ESC-Taste zu detektieren. Bei einer Übereinstimmung springt das Programm zu dem \asm{ESCEnde} (Label). Andernfalls wird eine Überprüfung des Inhalts der Variable \asm{bool_Ent_Ver} vorgenommen. Hier können 3 Fälle eintreten.
+
+\begin{center}
+    \begin{tabular}{@{}lll@{}}
+        Wert = 1 & Springe zum & \asm{EntschluesselungBeginn} (Label) \\
+        Wert = 2 & Springe zum & \asm{VerschluesselungBeginn} (Label) \\
+        Wert = 3 & Springe zurück zur & \asm{Endlosschleife} (Label) \\
+    \end{tabular}
+\end{center}
+
+\subsubsection{VerschluesselungBeginn (Label)}
+Hier wird über ein \asm{INCLUDE} der Code für das Verschlüsseln aus der \asm{Ver_Code.asm} eingefügt und durchlaufen. Nach dessen Abschluss wird die Variable \asm{bool_Ent_Ver} wieder auf 3 gesetzt, also in den Wartezustand überführt. Als letzte Handlung folgt ein \asm{JMP} zum \asm{HauptbildschirmDarstellen} (Label).
+
+\subsubsection{EntschluesselungBeginn (Label)}
+Hier wird über ein \asm{INCLUDE} der Code für das Entschlüsseln aus der \asm{Ent_Code.asm} eingefügt und durchlaufen. Nach dessen Abschluss wird die Variable \asm{bool_Ent_Ver} wieder auf 3 gesetzt, also in den Wartezustand überführt. Als letzte Handlung folgt hier ebenfalls ein \asm{JMP} zum \asm{HauptbildschirmDarstellen} (Label).
+
+\subsubsection{ESCEnde (Label)}
+In diesem Programmteil wird eine Überprüfung der Variable \asm{bool_Ent_Ver} auf den Wert 3 vorgenommen. Sollte eine Übereinstimmung vorliegen, so wird der Sprung (\asm{JMP}) zum \asm{Ende} (Label) vorgenommen, andernfalls springt das Programm zum \asm{HauptbildschirmDarstellen} (Label). Somit wird ein ungewolltes Verlassen aus dem Ent- bzw. Verschlüsselungsbildschirm verhindert.
+
+\subsubsection{Ende (Label)}
+Als Erstes wird der Bildschirm geleert. Dies geschieht über den erneuten Aufruf des Videomodus 3, ohne jedoch etwas Weiteres darzustellen. Anschließend erfolgen die zwei Standardzeilen in TASM für das Zurückkehren in die DOS-Box:
+
+\begin{lstlisting}[language=TASM]
+MOV AH, 4Ch
+INT 21h
+\end{lstlisting}
+
+%------------------------------------------------------------------------------
+\subsection{MAUS.asm}
+\subsubsection{MausPosiProc (PROC)}
+In dieser \asm{PROC} wird überprüft, wo sich der Mauszeiger beim Klicken befand. Je nach Ergebnis wird dann ein anderer Bildschirm angezeigt. Dabei gibt es drei Fälle:
+
+\begin{enumerate}[label=\arabic*,noitemsep]
+    \item Keine Schaltfläche getroffen
+    \item Entschlüsseln getroffen
+    \item Verschlüsseln getroffen
+\end{enumerate}
+
+Der simpelste Fall ist die Nummer 1. Hier wird einfach nichts getan, außer den Zustandsspeicher \asm{bool_Ent_Ver} auf 3 zu setzen, was als \glqq nichts zu tun\grqq{} interpretiert wird. Fall 2 setzt diese Variable jedoch auf 1 (entspricht Entschlüsselung) und zeichnet anschließend den \asm{Hauptbildschirm2}. Dieser beinhaltet die Flächen für die Text- und Schlüsseleingabe. Sollte jedoch kein oder ein nur unvollständiger Schlüssel eingegeben werden, so wird automatisch der vordefinierte Schlüssel aus der \asm{config.asm} für den weiteren Ablauf verwendet.
+
+Auf der folgenden Seite ist der Ablauf der Feststellung, ob und welche Schaltfläche getroffen wurde, graphisch dargestellt.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.8\textheight,keepaspectratio]{images/pap_mausposiproc.png}
+    \caption{Programmablaufplan der \texttt{MausPosiProc}}
+    \label{fig:pap-mausposiproc}
+\end{figure}
+
+%------------------------------------------------------------------------------
+\subsection{Ver\_Code.asm}
+Nachdem der Bildschirm zum Verschlüsseln aufgerufen wurde, ist hier der Ablauf von Klartext-Eingabe, Schlüssel in Hex-Werten und chiffrierter Textausgabe (ebenfalls in Hex-Werten) definiert. Die Klartextlänge ist auf 64 Zeichen und die Schlüssellänge auf 128 Zeichen beschränkt. 2 Eingaben beim Schlüssel erzeugen einen internen Hex-Wert.
+
+Durch einen \asm{INCLUDE} von der \asm{Ablauf_V.asm}, in der die Struktur der Verschlüsselung beschrieben ist, wird in diesem Programmteil die interne Verschlüsselung an sich aufgerufen.
+
+%------------------------------------------------------------------------------
+\subsection{Ent\_Code.asm}
+Nachdem der Bildschirm zum Entschlüsseln über die dafür existierende \asm{PROC} (siehe Absatz~\ref{sec:bildschirmprocx} \nameref{sec:bildschirmprocx}) gezeichnet wurde, kommt es hier ebenfalls zu einer Eingabe. Dieses Mal erfolgt die Texteingabe wegen des zu entschlüsselnden Zeichensatzes über hexadezimale Werte. Erlaubt sind dabei 0 bis 9 und A bis F. Nur Großbuchstaben werden akzeptiert.
+
+Nach dem selben Muster erfolgt auch die Eingabe für den Schlüssel. Die Schlüsseleingabe wird den Standardschlüssel (welcher fest integriert ist) soweit überschreiben, wie diese Eingabe erfolgt. Es können wieder maximal 128 Zeichen eingegeben werden. 2 Eingaben erzeugen einen internen Hex-Wert.
+
+Vor der Ausgabe des Klartextes wird in diesem Programmabschnitt ähnlich der \asm{Ver_Code.asm} ein \asm{INCLUDE} durchgeführt, welcher den Ablauf der Entschlüsselung aus der \asm{Ablauf_E.asm} aufruft.
+
+%------------------------------------------------------------------------------
+\subsection{Ablauf\_V.asm}
+In dieser ASM-Datei wird der allgemeine Ablauf geregelt, der bei einer Verschlüsselung stattfindet. Die Umsetzung in den Labels erfolgte nach diesem Muster (siehe nächste Seite), welches nochmal textuell ergänzend erklärt ist.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.5\textheight,keepaspectratio]{images/schema_verschluesselung.png}
+    \caption{Schema Verschlüsselung mit AES -- Quelle: \cite{ceilers_ver}}
+    \label{fig:schema-ver-2}
+\end{figure}
+
+\subsubsection{AblaufVerVorrunde (Label)}
+Hier geschieht lediglich die Verrechnung mit dem Rundenschlüssel nach der ersten Schlüsselexpansion.
+
+\subsubsection{AblaufVer (Label)}
+Dies sind die Hauptrunden der Verschlüsselung. Die Anzahl der Runden werden in der \asm{Rundenanzahl} definiert. Durch den Beginn des Vergleichswertes in \asm{CL} (Register) mit 1 wird auch tatsächlich die Anzahl der gewünschten Runden durchlaufen. Die Schlussrunde läuft anders ab, wird aber als (1) Runde mitgezählt.
+
+In der Reihenfolge werden hier die einzelnen Werte erst substituiert (Prinzip siehe \asm{SBOX.asm}), dann die Reihen rotiert (\asm{ShiftRow}) mit anschließendem \asm{ShiftColumn}. Zuletzt findet eine Schlüsselexpansion statt, damit der Rundenschlüssel erzeugt und nachfolgend auf den \asm{TastaturBuffer} gerechnet wird.
+
+\subsubsection{AblaufVerEndrunde (Label)}
+Diese letzte Runde findet ähnlich den Hauptrunden statt, jedoch wird hier die Verrechnung der Spalten per \asm{ShiftColumn} weggelassen. Die nun erwähnte Ausgabe wird wiederum in der \asm{Ver_Code.asm} geregelt.
+
+%------------------------------------------------------------------------------
+\subsection{Ablauf\_E.asm}
+In dieser ASM-Datei wird der allgemeine Ablauf geregelt, der bei einer Entschlüsselung stattfindet. Die Umsetzung in den Labels erfolgte nach dem Muster auf der nächsten Seite, welches nochmal textuell ergänzend erläutert ist. AES ist ein symmetrisches Verfahren. Somit ist erkennbar, dass die Entschlüsselung wie die inverse Verschlüsselung stattfindet.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.5\textheight,keepaspectratio]{images/schema_entschluesselung.png}
+    \caption{Schema Entschlüsselung mit AES -- Quelle: \cite{ceilers_ent}}
+    \label{fig:schema-ent-2}
+\end{figure}
+
+\subsubsection{AblaufEntVorrunde (Label)}
+In dieser Vorrunde findet nach Schlüsselexpansion die Verrechnung mit diesem Rundenschlüssel, dann ein inverser \asm{ShiftRow} (siehe \asm{ShiftRow_1}) und schließlich die inverse Substitution mit der invertierten \asm{SBOX} statt.
+
+\subsubsection{AblaufEnt (Label)}
+Hier findet solange die Hauptrunde der Entschlüsselung statt, wie der Rundzähler aus \asm{CL} nicht gleich der Rundenanzahl ist. Damit ist gemeint, dass zunächst der Rundenschlüssel expandiert und aufgerechnet wird, dann die inverse Spaltenrechnung stattfindet, anschließend die inverse Zeilenmischung sowie die abschließende Substitution mit der inversen \asm{SBOX}.
+
+\subsubsection{AblaufEntEndrunde (Label)}
+In dieser Schlussrunde wird, dank dem symmetrischen Verfahren, lediglich der Rundenschlüssel auf den \asm{TastaturBuffer} gerechnet. Dies entspricht der Vorrunde des Verschlüsselungsablaufes.
+
+%------------------------------------------------------------------------------
+\subsection{VERS.asm}
+\subsubsection{SchluesselInitialisieren (PROC)}
+Die Funktion dieser \asm{PROC} ist einfach, da der gesamte, fest in der \asm{config.asm} implementierte, Standardschlüssel in den \asm{Rundenschluessel_Expand} kopiert wird. Somit bleibt der \asm{Rundenschluessel_Expand} bei einer nicht erfolgten Eingabe durch den Benutzer nicht leer. Ebenfalls wird die Rundenkonstante initialisiert mit dem Wert $5F_{\text{hex}}$.
+
+\textbf{HINWEIS:} Bei der manuellen Eingabe eines Schlüssels oder Teilschlüssels, wird der jeweilige Bereich, wie weit die Eingabe reicht, überschrieben und somit der Benutzerwunschschlüssel verwendet.
+
+\subsubsection{SchluesselAnwenden (PROC)}
+Mit dieser \asm{PROC} wird das Anwenden des Rundenschlüssels auf das Array im \asm{TastaturBuffer} beschrieben.
+
+\subsubsection{Schluesselexpansion (PROC)}
+Die Rundenschlüsselexpansion findet nach folgendem Muster statt:
+
+\begin{align*}
+    k_{\text{Runde}+1,\,0} &= k_{\text{Runde},\,0} \oplus \text{substituiert}\bigl(k_{\text{Runde},\,63}\bigr) \oplus \text{Rundenkonstante}\\
+    k_{\text{Runde}+1,\,j} &= k_{\text{Runde},\,j} \oplus k_{\text{Runde},\,j-1}
+\end{align*}
+
+\begin{tabular}{@{\hspace{1.2cm}}l@{\hspace{3mm}}l}
+    Runde & $\Rightarrow$ Vorrunde (bei der 1. also Initialschlüssel) \\
+    $j$ & $\Rightarrow$ Index des Schlüssels (zw.\ 0 und 63) \\
+\end{tabular}
+
+Jedoch bevor das Programm intern die 63 Schlüssel nach dem ersten Schlüssel durchläuft, wird noch die Rundenkonstante über ein \asm{ROL} (Rotate Left) ebenfalls expandiert.
+
+\subsubsection{SBOXSubstitution (PROC)}
+In dieser \asm{PROC} wird der gesamte \asm{TastaturBuffer} mithilfe der \asm{SBOX} substituiert. Wie die Substitution an sich abläuft, ist im Abschnitt~\ref{sec:sbox} \nameref{sec:sbox} beschrieben.
+
+\subsubsection{ShiftRow (PROC)}
+Beim Aufruf dieser \asm{PROC} wird mit dem zeilenweisen Rotieren der Inhalte des \asm{TastaturBuffer}s begonnen. Dabei hat der Name hier Programm, da nach folgendem Muster das Durchrotieren stattfindet:
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/shiftrow.png}
+    \caption{Rotationsmuster der \texttt{ShiftRow}-PROC}
+    \label{fig:shiftrow}
+\end{figure}
+
+Wie zu erkennen, wird die erste Zeile des Datensatzes nicht verändert. Der Block aus 16 Einheiten wird in vier gedachte Zeilen zerlegt. Die zweite Zeile dagegen bekommt eine Rotation einmal nach Links. Somit steht die Stelle 7 nun an der ehemaligen Stelle 4. Dadurch rückt diese (4) an die Stelle 5 und so weiter.
+
+Zeile 3 wird um 2 Stellen und die 4. Zeile um 3 Stellen rotiert. Dieses Muster wird 4x durchlaufen, da unser 64 Zeichen langer Text aus dem \asm{TastaturBuffer} in 4 Blöcke à 16 Einträge perfekt geteilt werden kann.
+% TODO v2.0.0: Der ShiftRow-Fix (CMP CX, 5) sorgt dafuer, dass tatsaechlich alle
+% vier Bloecke bearbeitet werden (vorher nur drei).
+
+\subsubsection{ShiftColumn (PROC)}
+Diese \asm{PROC} setzt das Spaltenrechnen von AES um. Dabei wird mithilfe der C-Matrix eine Verrechnung der einzelnen Spalten vorgenommen, da man sich hier wieder die Blöcke aus 16 Einträgen vorstellen muss. Nachfolgende Grafik soll dies zeigen:
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/shiftcolumn_1.png}
+    \caption{ShiftColumn: Die Blöcke aus 16 Einträgen werden spaltenweise verrechnet}
+    \label{fig:shiftcolumn-1}
+\end{figure}
+
+Bei einem Durchlauf einer Spalte werden nun die Werte \glqq 0\grqq, \glqq 4\grqq, \glqq 8\grqq, \glqq 12\grqq{} mit der C-Matrix nach den mathematischen Gesetzen verrechnet.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/shiftcolumn_2.png}
+    \caption{ShiftColumn: Verrechnung einer Spalte (Einträge 0, 4, 8 und 12)}
+    \label{fig:shiftcolumn-2}
+\end{figure}
+
+Somit werden mit einer Rechnung pro C-Matrix 4 Einträge manipuliert. Für den gesamten \asm{TastaturBuffer} muss also die Multiplikation mit der C-Matrix insgesamt 16x angewendet werden.
+
+\subsubsection{MalZweiProc (PROC)}
+Hier findet eine Fallunterscheidung statt, welche den Wert als größer 127 oder kleiner gleich 127 erkennt. Sollte er kleiner sein, so wird er durch ein \asm{SHL} (shift left = schiebe nach links) mit 2 multipliziert. Andernfalls wird eine XOR-Operation mit $283_{\text{dez}}$ durchgeführt und anschließend mal 2 gerechnet. Ein Aufruf dieser \asm{PROC} erfolgt über die \asm{ShiftColumn} an mehreren Stellen.
+% TODO v2.0.0: MalZweiPROC wurde korrigiert (SHL AL,1; bei Ueberlauf XOR 1Bh) und
+% um GFMulPROC (allgemeine GF(2^8)-Multiplikation) ergaenzt.
+
+%------------------------------------------------------------------------------
+\subsection{ENTS.asm}
+\subsubsection{SBOXSubstitution\_1 (PROC)}
+In dieser \asm{PROC} wird der gesamte \asm{TastaturBuffer} mithilfe der invertierten \asm{SBOX} substituiert. Wie die Substitution an sich abläuft, ist im Abschnitt~\ref{sec:sbox} \nameref{sec:sbox} beschrieben.
+
+\subsubsection{ShiftRow\_1 (PROC)}
+Beim Aufruf dieser \asm{PROC} wird mit dem zeilenweisen Rotieren der Inhalte begonnen. Dieses Rotieren findet nach folgendem Muster statt:
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/shiftrow_invers.png}
+    \caption{Rotationsmuster der \texttt{ShiftRow\_1}-PROC (inverse Variante)}
+    \label{fig:shiftrow-invers}
+\end{figure}
+
+Aus der Grafik ist erkennbar, dass die erste Zeile keine Rotation zu verzeichnen hat. Die Zweite dagegen hat einen \asm{ShiftRight} (schiebe nach rechts) mit Sicherung des Inhaltes 7 und Einschub von links an die Stelle 4.
+
+Bei Zeile 3 wird eine 2fache Rotation durchgeführt. Somit stehen alle Einträge zwei Plätze weiter rechts. Auch hier werden die raus fallenden Inhalte von links wieder eingefügt, wie es bei einer Rotation definiert ist.
+
+Bei der letzten Zeile findet eine Verschiebung um 3 statt, damit jedes Verschiebemuster in den 4 Zeilen einmal stattgefunden hat.
+
+\subsubsection{ShiftColumn\_1 (PROC)}
+% TODO v2.0.0: ShiftColumn_1 wurde in Version 2.0.0 neu geschrieben (inverse
+% MixColumns mit InvMixMatrix). Der folgende Absatz beschreibt den Stand 1.x.
+Leider nicht funktionsfähig\ldots{}
+
+Hier soll die Verrechnung mit der inversen C-Matrix stattfinden:
+\[
+    \begin{pmatrix}
+        \mathrm{E} & \mathrm{B} & \mathrm{D} & 9 \\
+        9 & \mathrm{E} & \mathrm{B} & \mathrm{D} \\
+        \mathrm{D} & 9 & \mathrm{E} & \mathrm{B} \\
+        \mathrm{B} & \mathrm{D} & 9 & \mathrm{E}
+    \end{pmatrix}
+\]
+
+Wie schon bei der nicht inversen Variante wird eine einzelne (gedachte) Spalte mit einer Zeile der Matrix verrechnet. Die einzelnen Einträge werden multipliziert und diese dann zum Schluss durch ein \asm{XOR} logisch verknüpft.
+
+%------------------------------------------------------------------------------
+\subsection{SBOX.asm}\label{sec:sbox}
+In dieser asm-Datei werden zwei elementare Arrays angelegt. Das Erste beinhaltet die \asm{SBOX}, welche zum Verschlüsseln benötigt wird, während das Zweite schlicht die inverse \asm{SBOX} enthält (zum Entschlüsseln).
+
+Das Grundprinzip in der Anwendung einer \asm{SBOX} besteht daraus, dass mithilfe des zu wechselnden Wertes die Stelle im Array ermittelt wird, wo der neue (substituierte) Wert dann herausgenommen wird.
+
+Als Beispiel wäre die Eingabe $36_{\text{hex}}$ gegeben. Dies entspricht dem dezimal Wert $54_{\text{dez}}$ und verweist somit auf die 54.\ Stelle im Array, also dem Index $53_{\text{dez}}$ des Arrays. An dieser Stelle befindet sich der vordefinierte Wert $102_{\text{dez}}$ -- was $66_{\text{hex}}$ entspricht. Bei der Substitution wird nun dieser Wert ($66_{\text{hex}}$) mit dem vorherigen Wert ($36_{\text{hex}}$) ersetzt.
+
+Bei der inversen \asm{SBOX} erfolgt dieses Ersetzen der Werte genau nach dem selben Schema.
+
+%------------------------------------------------------------------------------
+\subsection{config.asm}
+In dieser Datei finden sich alle Variablen. Aufgelistet wären das:
+
+% Hinweis: Im PDF waren die Beschreibungen von Hauptbildschirm4_Ergebnis und
+% Hauptbildschirm5_Ergebnis vertauscht. Laut Quelltext (Ver_Code.asm setzt
+% BildschirmVar auf 4, Ent_Code.asm auf 5) gehoert 4 zur Verschluesselung.
+\begin{longtable}{@{}p{3.8cm}p{1.8cm}p{8.2cm}@{}}
+    \caption{Variablen der \texttt{config.asm}}\label{tab:config}\\
+    \toprule
+    \textbf{Name} & \textbf{Datentyp} & \textbf{Beschreibung} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Name} & \textbf{Datentyp} & \textbf{Beschreibung} \\
+    \midrule
+    \endhead
+    \midrule
+    \multicolumn{3}{r}{\small\emph{weiter auf der nächsten Seite}} \\
+    \endfoot
+    \bottomrule
+    \endlastfoot
+    \asm{Rundenanzahl} & DB & Beinhaltet die Anzahl der Runden. Damit kann man leichter dann aus z.\,B.\ 10 Runden 5 machen. \\
+    \asm{bool_Ent_Ver} & DB & Beinhaltet die Variable, die genutzt wird, um festzuhalten, ob Entschluesseln, Verschluesseln oder keine der Schaltflächen gedrückt wurde. \\
+    \asm{ESC_Code} & DB & \asm{1Bh} => Tastaturcode von der ESC-Taste. Für bessere Lesbarkeit im Code. \\
+    \asm{Entertaste_Code} & DB & \asm{0Dh} => Tastaturcode von der Enter-Taste. Für bessere Lesbarkeit im Code. \\
+    \asm{Video_Seg} & DW & Adresse vom Videosegment. Damit der Videomodus 3 auch alles korrekt printed. \\
+    \asm{oldIOFF} & DW & Offset der ehemaligen Interrupt-Service-Routine. \\
+    \asm{oldISeg} & DW & Segmentadresse der ehemaligen Interrupt-Service-Routine. \\
+    \asm{Hauptbildschirm} & DB & Beinhaltet den String, der das Hauptmenü beinhaltet. (siehe \asm{config.asm}) \\
+    \asm{Hauptbildschirm2} & DB & Beinhaltet den String, der den Bildschirm für die Eingabe zum Entschlüsseln beinhaltet (siehe \asm{config.asm}) \\
+    \asm{Hauptbildschirm3} & DB & Beinhaltet den String, der den Bildschirm für die Eingabe zum Verschlüsseln beinhaltet. (siehe \asm{config.asm}) \\
+    \asm{Hauptbildschirm4_Ergebnis} & DB & Beinhaltet den String, der den Bildschirm für die Ausgabe des Verschlüsseln-Ergebnisses beinhaltet. (siehe \asm{config.asm}) \\
+    \asm{Hauptbildschirm5_Ergebnis} & DB & Beinhaltet den String, der den Bildschirm für die Ausgabe des Entschlüsseln-Ergebnisses beinhaltet. (siehe \asm{config.asm}) \\
+    \asm{BildschirmVar} & DB & Hier wird eingetragen, welcher der 4 (nicht Haupt-)Bildschirme zu zeichnen sind. Diese Variable wird von der \asm{BildschirmProcX} verwendet. \\
+    \asm{EntR1_L} & DW & =499 Beinhaltet die Blocknummer (*2) der oberen Zeile vom ENTSCHLUESSELN (Links) \\
+    \asm{EntR1_R} & DW & =535 Beinhaltet die Blocknummer (*2) der oberen Zeile vom ENTSCHLUESSELN (Rechts) \\
+    \asm{EntR2_L} & DW & =659 Beinhaltet die Blocknummer (*2) der mittleren Zeile vom ENTSCHLUESSELN (Links) \\
+    \asm{EntR2_R} & DW & =695 Beinhaltet die Blocknummer (*2) der mittleren Zeile vom ENTSCHLUESSELN (Rechts) \\
+    \asm{EntR3_L} & DW & =819 Beinhaltet die Blocknummer (*2) der unteren Zeile vom ENTSCHLUESSELN (Links) \\
+    \asm{EntR3_R} & DW & =855 Beinhaltet die Blocknummer (*2) der unteren Zeile vom ENTSCHLUESSELN (Rechts) \\
+    \asm{VerR1_L} & DW & =581 Beinhaltet die Blocknummer (*2) der oberen Zeile vom VERSCHLUESSELN (Links) \\
+    \asm{VerR1_R} & DW & =617 Beinhaltet die Blocknummer (*2) der oberen Zeile vom VERSCHLUESSELN (Rechts) \\
+    \asm{VerR2_L} & DW & =741 Beinhaltet die Blocknummer (*2) der mittleren Zeile vom VERSCHLUESSELN (Links) \\
+    \asm{VerR2_R} & DW & =777 Beinhaltet die Blocknummer (*2) der mittleren Zeile vom VERSCHLUESSELN (Rechts) \\
+    \asm{VerR3_L} & DW & =901 Beinhaltet die Blocknummer (*2) der unteren Zeile vom VERSCHLUESSELN (Links) \\
+    \asm{VerR3_R} & DW & =937 Beinhaltet die Blocknummer (*2) der unteren Zeile vom VERSCHLUESSELN (Rechts) \\
+    \asm{TastaturBuffer} & DB & Hier werden die Hex-Werte der Zeichen gespeichert, welche per Tastatureingabe erkannt wurden. \\
+    \asm{TastaturBufferOrg} & DB & Dient als Sicherung der Eingabe, um die Ausgabe des Originaltextes zu gewährleisten. \\
+    \asm{Konstante} & DB & $=5F_{\text{hex}}$ \textbar{} Ist die vordefinierte Initialkonstante. \\
+    \asm{Rundenkonstante} & DB & Ermittelte sich aus der durch \asm{ROL} veränderten vorherigen Rundenkonstante. \\
+    % TODO v2.0.0: Rundenschluessel_0 -> Der Hinweis "nicht ueberschreibbar" gilt weiterhin
+    % fuer den Standardschluessel; die Eingabe schreibt nur in Rundenschluessel_Expand.
+    \asm{Rundenschluessel_0} & DB & Ist der fest implementierte Standardschlüssel, welcher während der Laufzeit auch nicht überschrieben werden kann. \\
+    \asm{Rundenschluessel_Expand} & DB & Hier wird der \asm{Rundenschluessel_0} reinkopiert. Bei einer Benutzereingabe eines eigenen Schlüssels, werden nur hier die entsprechenden Einträge verändert. Ebenfalls die erweiterten Schlüssel (siehe \asm{Schluesselexpansion}) werden hier abgelegt. \\
+    \asm{ShiftZwSpeicher} & DB & Wird benötigt für die Arbeit der \asm{ShiftRow} und seinem Pendant \asm{ShiftRow_1}. \\
+    \asm{ShiftBXZwSpeicher} & DW & Da ein Index-Register nicht mit einem Halb-Register (H oder L) verglichen werden kann, wird das \asm{BX}-Register hier genutzt, was durch den internen Ablauf jedoch an einigen Stellen zwischengespeichert werden muss. \\
+    \asm{ShiftColumnZW} & DW & Sichert die Zwischenergebnisse aus der \asm{ShiftColumn} \& \asm{ShiftColumn_1}. \\
+    \asm{ShiftColumnZW2} & DW & Sichert die Zwischenergebnisse aus der \asm{ShiftColumn} für die Spaltenrechnung, sonst gäbe es Rechenfehler da Werte überschrieben werden. \\
+\end{longtable}
+
+Die in der \asm{config.asm} abgelegten Bildschirme (Hauptbildschirm 2 bis 5) sehen im Programm wie folgt aus:
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/bildschirm_ent_eingabe.png}
+    \caption{\texttt{Hauptbildschirm2}: Eingabe zum Entschlüsseln}
+    \label{fig:bs2}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/bildschirm_ver_eingabe.png}
+    \caption{\texttt{Hauptbildschirm3}: Eingabe zum Verschlüsseln}
+    \label{fig:bs3}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/bildschirm_ver_ergebnis.png}
+    \caption{\texttt{Hauptbildschirm4\_Ergebnis}: Ausgabe der Verschlüsselung}
+    \label{fig:bs4}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/bildschirm_ent_ergebnis.png}
+    \caption{\texttt{Hauptbildschirm5\_Ergebnis}: Ausgabe der Entschlüsselung}
+    \label{fig:bs5}
+\end{figure}
+
+%------------------------------------------------------------------------------
+\subsection{ISR.asm}
+Diese gesamte Datei beinhaltet einen rein zur Demonstration erstellten Codesatz, um zu beweisen, dass uns bekannt ist, wie die Erstellung und Einschreibung einer eigenen Interrupt-Service-Routine (kurz: ISR) ablaufen muss.
+
+\subsubsection{ISR1Ch (Label)}
+Hier wird beschrieben, was in der eigens erstellten ISR ablaufen soll. Unspektakulärerweise ist dies bei diesem Programm ein \asm{NOP}-Befehl.
+
+\subsubsection{EigeneISR (PROC)}
+Mit dieser \asm{PROC} wird das Eintragen der selbst erstellten ISR durchgeführt. Näheres dazu ist im Quelltext-Kommentar zu lesen.
+
+\subsubsection{ISR\_Zuruecksetzten (PROC)}
+Beim Aufruf dieser \asm{PROC} erfolgt das Zurücksetzen der \asm{ISR-1Ch}, damit das Programm beendet werden kann.
+
+%------------------------------------------------------------------------------
+\subsection{BildPROC.asm}
+Diese zwei \asm{PROC}s haben die Funktionalität, das Zeichnen der Bildschirme, welche in der \asm{config.asm} definiert sind, auszuführen.
+
+\subsubsection{HauptbildschirmProc (PROC)}
+Sobald der \asm{CALL} dieser \asm{PROC} erfolgt, wird das Videosegment in \asm{ES} geladen, damit für den Videomodus 3 festgelegt wird, wo er zu zeichnen hat. Somit wird der Hauptbildschirm dargestellt (Näheres in den Kommentaren der Befehlszeilen). Abschließend wird die, für die interne Verarbeitung benötigte, Variable \asm{bool_Ent_Ver} auf 3 gesetzt (also nichts tun). Daraufhin geschieht der Rücksprung zum Programm über ein \asm{RET}.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[height=0.5\textheight,keepaspectratio]{images/pap_hauptbildschirmproc.png}
+    \caption{Programmablaufplan der \texttt{HauptbildschirmProc}}
+    \label{fig:pap-hauptbildschirmproc}
+\end{figure}
+
+\subsubsection{BildschirmProcX (PROC)}\label{sec:bildschirmprocx}
+Nach dem Aufruf dieser \asm{PROC}, wird zunächst das Videosegment in \asm{ES} geladen. Anschließend wird der Bildschirm, durch die erneute Einstellung des Videomodus 3 geleert und zum abermaligen Zeichnen von Inhalten vorbereitet. Näheres dazu in den Kommentaren bei den Befehlszeilen.
+
+Als erstes erfolgt ein Vergleich der Variable \asm{BildschirmVar} auf den Wert 2. Sollte dieser erfolgreich sein, so wird der \asm{Hauptbildschirm2} gezeichnet (Entschlüsseln-Eingabe). Nach der Ausführung (graphische Darstellung des Bildschirms) springt das Programm zum Ende der \asm{PROC} und kehrt zum vorherigen Programmabschnitt über ein \asm{RET} zurück. Sollte der Vergleich der \asm{BildschirmVar} mit 2 negativ ausgefallen sein, so erfolgt nun ein \asm{CMP} auf den Inhalt mit 3. Hier wird nach dem selben Muster der Aufruf des \asm{Hauptbildschirm3} (Verschlüsseln-Eingabe) erfolgen, mit anschließendem Sprung zum \asm{BildschirmEnde} (Label).
+
+Bei erneut fehlgeschlagenem Test, erfolgt ein Vergleich auf den Wert 4. Dieser codiert den \asm{Hauptbildschirm4_Ergebnis} (Verschlüsseln-Ausgabe). Als letzter Vergleich wird die Variable \asm{BildschirmVar} mit dem Wert 5 abgeglichen. Dieser bringt den \asm{Hauptbildschirm5_Ergebnis} (Entschlüsseln-Ausgabe) zum Zeichnen.
+
+Sollten durch einen Fehler im Programm oder durch externe Einflüsse die \asm{BildschirmVar} keinen der hier 4 codierten Zustände haben, so wird in der \asm{PROC} das Zeichnen an sich vernachlässigt. Stattdessen findet ein \asm{JMP} zum \asm{BildschirmEnde} (Label) statt. Das Unterprogramm \asm{BildschirmProcX} führt ein \asm{RET} durch und wird beendet.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/pap_bildschirmprocx.png}
+    \caption{Programmablaufplan der \texttt{BildschirmProcX}}
+    \label{fig:pap-bildschirmprocx}
+\end{figure}

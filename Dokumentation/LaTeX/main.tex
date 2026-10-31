@@ -71,7 +71,7 @@
 \setlength{\headheight}{14pt}
 \fancyhead[C]{
     \ifodd
-        \value{page} AES -- Symmetrische Verschlüsselung in TASM
+        \value{page} AES -- Symmetrische Verschlüsselung in TASM (v\versionProjekt)
         \small    % Linie weg wenn einkommentiert
     \else
         Abschlussprojekt Assemblerprogrammierung
@@ -157,6 +157,10 @@
 \newcommand{\autorEins}{Tim Michael Kretzschmar}
 \newcommand{\autorZwei}{Konstantin Blechschmidt}
 \newcommand{\themaProjekt}{AES -- Symmetrische Verschlüsselung in TASM umgesetzt}
+\newcommand{\versionProjekt}{2.0.0}
+% Verweise auf das Git-Repository (Commits, Branch)
+\newcommand{\repoURL}{https://github.com/Kretchen001/AESxTASM}
+\newcommand{\commit}[1]{\href{\repoURL/commit/#1}{\texttt{#1}}}
 % Kürzere Referenzierung
 \newcommand{\refPlusName}[1]{\ref{#1} \nameref{#1}}
 % Code-Namen (Label, PROC, Variablen, Dateien) in Schreibmaschinenschrift.
@@ -170,7 +174,7 @@
 
 % Eigenschaften einstellen
 \hypersetup{
-    pdftitle={\themaProjekt},
+    pdftitle={\themaProjekt{} -- Version \versionProjekt},
     pdfauthor={\autorEins, \autorZwei},
     pdfcreator={\autorEins, \autorZwei},
     pdfkeywords={AES} {TASM} {Assembler},

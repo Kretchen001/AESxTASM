@@ -167,6 +167,8 @@
 % Unterstriche muessen NICHT escaped werden (\asm{Ver_Code.asm}); an ihnen darf
 % umgebrochen werden und das Makro ist in \caption{...} verwendbar.
 \DeclareUrlCommand\asm{\urlstyle{tt}}
+% Hexadezimalzahl: \hexo{4D} -> 4Dh
+\newcommand{\hexo}[1]{\texttt{#1h}}
 % Haekchen / Kreuz (Testfaelle)
 \newcommand{\iconok}{\raisebox{-0.3ex}{\includegraphics[height=1.1em]{images/icon_ok.png}}}
 \newcommand{\iconfehler}{\raisebox{-0.3ex}{\includegraphics[height=1.1em]{images/icon_fehler.png}}}
@@ -203,6 +205,8 @@
     % ---- Handbuch (ehemals AES.pdf, Kapitel 1 bis 3) ----
     \newpage
     \input{section/einleitung.tex}
+    \newpage
+    \input{section/grundlagen.tex}
     \newpage
     \input{section/asm_dateien.tex}
     \newpage

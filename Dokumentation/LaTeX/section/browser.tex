@@ -1,0 +1,30 @@
+% neu in 2.0.0
+\section{Browserversion (WebAssembly)}\label{sec:browser}
+
+Das Programm ist ein DOS"=Programm und braucht normalerweise die DOS-Box. Damit nicht jeder Nutzer eine DOS-Box bereithalten muss, gibt es im Ordner \texttt{web} eine Fassung, die direkt im Browser läuft. Sie verwendet \emph{js-dos}: Das ist die DOS-Box, übersetzt nach WebAssembly, also in einen Bytecode, den jeder aktuelle Browser ausführen kann. Es muss nichts installiert werden.
+
+\subsection{Aufbau}
+\begin{itemize}
+  \item \texttt{web/index.html}: die Seite. Sie lädt js-dos und startet das Bundle.
+  \item \texttt{web/aes.jsdos}: ein ZIP-Archiv mit \texttt{AES.EXE} und der Konfiguration \texttt{.jsdos/dosbox.conf}. Die Konfiguration bindet das Archiv als Laufwerk \asm{C:} ein und startet \texttt{AES.EXE} automatisch.
+  \item \texttt{web/serve.py} und \texttt{web/serve.js}: kleine lokale Webserver (Python bzw. Node.js, ohne zusätzliche Pakete).
+  \item \texttt{web/tools/build\_jsdos.py}: baut \texttt{aes.jsdos} aus den Quelltexten neu.
+\end{itemize}
+
+\subsection{Starten}
+\begin{lstlisting}[language={},caption={Lokalen Webserver starten},label={lst:webstart}]
+python3 web/serve.py        (oder)   node web/serve.js
+\end{lstlisting}
+Danach \texttt{http://localhost:8000} im Browser öffnen; ein anderer Port kann als Argument übergeben werden. Ein Öffnen per Doppelklick (\texttt{file://}) funktioniert nicht, weil der Browser das Bundle nur über HTTP lädt. Zum Veröffentlichen genügt jeder statische Webserver, zum Beispiel GitHub Pages mit dem Ordner \texttt{web}. Für js-dos selbst braucht der Browser eine Internetverbindung, denn das Skript wird von \texttt{v8.js-dos.com} geladen.
+
+\subsection{Bau der EXE ohne TASM}
+Die Browserversion enthält eine \texttt{AES.EXE}, die nicht mit TASM, sondern mit dem freien MASM-kompatiblen Assembler \emph{JWasm} (Option \texttt{-mz}, direkt eine EXE im DOS-Format) gebaut wurde. Der Quelltext im Ordner \texttt{ASM} bleibt dafür unverändert. Das Skript \texttt{build\_jsdos.py} legt eine Kopie an und gleicht darin vier Schreibweisen an, die TASM erlaubt und MASM nicht:
+\begin{itemize}
+  \item \asm{PUSH DS AX BX} (mehrere Register in einem Befehl) wird zu einzelnen \asm{PUSH}-Befehlen, \asm{POP} entsprechend. Die Reihenfolge bleibt wie im Quelltext.
+  \item \asm{ENDP Name} wird zu \asm{Name ENDP}.
+  \item Die leere Zeichenkette \asm{DB ""} in \texttt{config.asm} wird zu \asm{LABEL BYTE}. Beides legt kein Byte ab, nur die Marke bleibt.
+  \item Die Schreibweise der \asm{INCLUDE}-Namen wird der Datei angepasst, weil Linux zwischen Groß- und Kleinschreibung unterscheidet (\texttt{ABLAUF\_V.asm} gegen \texttt{Ablauf\_V.asm}).
+\end{itemize}
+
+\subsection{Einschränkungen}
+Die Browserversion ist bisher nur gebaut, aber nicht im Emulator ausgeführt worden; dasselbe gilt für den Lauf in der DOS-Box (Tests D1 bis D7 in Kapitel~\ref{sec:tests}). Es ist nicht belegt, dass die mit JWasm gebaute EXE in jedem Detail dasselbe tut wie die mit TASM gebaute. Der Vergleich ist einfach: Die Eingabe \emph{Hallo} muss den Geheimtext beginnend mit \texttt{E159BDA8\ldots} ergeben (Kapitel~\ref{sec:tests}, Teil B). Weicht das Ergebnis ab, wird die \texttt{AES.EXE} im Archiv \texttt{aes.jsdos} (ein gewöhnliches ZIP) durch die mit \texttt{asmaes.bat} gebaute ersetzt.

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AES in TASM – im Browser</title>
+<link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
+<style>
+body{font:16px/1.5 system-ui,sans-serif;max-width:60rem;margin:0 auto;padding:1rem;background:#fff;color:#1a1a1a}
+@media(prefers-color-scheme:dark){body{background:#14161a;color:#e6e6e6}}
+#dos{width:100%;height:min(70vh,520px);background:#000}
+small{opacity:.75}
+</style></head><body>
+<h1>AES (TASM) im Browser</h1>
+<p>Das DOS-Programm läuft hier in DOSBox, das per WebAssembly im Browser ausgeführt wird (js-dos). Es muss nichts installiert werden. Bedienung per Maus und Tastatur wie in DOSBox.</p>
+<div id="dos"></div>
+<p><small>Emulator: <a href="https://js-dos.com">js-dos</a>. Der Quelltext liegt im Projekt-Repository (Ordner ASM).</small></p>
+<script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+<script>Dos(document.getElementById("dos"),{url:"aes.jsdos"});</script>
+</body></html>

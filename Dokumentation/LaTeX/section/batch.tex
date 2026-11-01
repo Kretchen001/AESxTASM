@@ -1,0 +1,51 @@
+% Ehemals AES.pdf, Kapitel 3
+\section{Batch-Dateien}\label{sec:batch}
+
+\subsection{asmaes.bat}
+Diese ausführbare Datei beinhaltet folgenden Befehlssatz:
+
+\begin{lstlisting}[language={},caption={\texttt{asmaes.bat}},label={lst:asmaes}]
+cd ASM
+tasm aes.asm
+tlink aes.obj
+cd ..
+\end{lstlisting}
+
+Damit wird für den ungeübten Benutzer, aber auch für den Experten in der DOS-Box, das Kompilieren der ASM-Dateien leichter. Mit dem ersten Befehl wird eine obj- und eine map-Datei erstellt dank des TASM-Compilers. Danach wird mit dem \asm{tlink}-Befehl eine exe aus der obj-Datei erzeugt, welche als ausführbare Datei in der DOS-Box dann gestartet werden kann. Der Name steht für \emph{assembliereaes}.
+
+\subsection{tdaes.bat}
+Diese ausführbare Datei beinhaltet folgenden Befehlssatz:
+
+\begin{lstlisting}[language={},caption={\texttt{tdaes.bat}},label={lst:tdaes}]
+cd ASM
+tasm aes.asm
+tlink aes.obj
+td aes.asm
+cd ..
+\end{lstlisting}
+
+Hier erfolgt nach dem Erstellen der exe-Datei noch der Aufruf des Turbodebuggers. Hiermit soll dem Benutzer der Aufruf des Debuggers nach Änderungen im Quellcode zum Testen vereinfacht werden. Der Name steht hier für \emph{starteturbodebuggervonaes}.
+
+\subsection{start.bat}
+Diese ausführbare Datei beinhaltet folgenden Befehlssatz:
+
+\begin{lstlisting}[language={},caption={\texttt{start.bat}},label={lst:start}]
+cd ASM
+tasm aes.asm
+tlink aes.obj
+aes.exe
+cd ..
+\end{lstlisting}
+
+Mit dieser Datei, die ebenfalls für einen Entwickler vorgesehen ist, wird nach dem Assemblieren der Start des richtigen Programms, nicht im Debugger wie in der \asm{tdaes.bat}, ausgeführt. Dies soll das Testen in der Oberfläche zeitlich effektiver gestalten, falls Änderungen oder Erweiterungen eingefügt \& getestet werden. Der Name steht hier für \emph{starteaes}.
+
+\subsection{AES.bat}
+Diese ausführbare Datei beinhaltet folgenden Befehlssatz:
+
+\begin{lstlisting}[language={},caption={\texttt{AES.bat}},label={lst:aesbat}]
+cd ASM
+aes.exe
+cd ..
+\end{lstlisting}
+
+Mit dieser ausführbaren Datei soll für den Endbenutzer der Start in der DOS-Box erleichtert werden. Da ein ungeübter Benutzer sich im gesamten Verzeichnis und den dazugehörigen Dateien möglicherweise nur schwer zurechtfindet, ist diese Datei mit dem simplen Befehl versehen, die assemblierte exe zu starten.

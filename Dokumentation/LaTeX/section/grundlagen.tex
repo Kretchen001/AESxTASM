@@ -1,0 +1,118 @@
+% Kapitel 2 -- Grundlagen und Datenmodell (neu in Version 2.0.0)
+\section{Grundlagen und Datenmodell}\label{sec:grundlagen}
+Dieses Kapitel erklärt die Begriffe und Rechenregeln, die in allen folgenden Kapiteln vorausgesetzt werden: wie der Zustand im Speicher liegt, wie in $\mathrm{GF}(2^8)$ gerechnet wird, welche Register welche Rolle haben und wie ein Bildschirmzeichen im Videospeicher adressiert wird.
+
+\textbf{Schreibweise.} Hexadezimale Zahlen sind in Schreibmaschinenschrift mit nachgestelltem \texttt{h} gesetzt (\hexo{4D}, im Quelltext \asm{4Dh}); Zahlen ohne Zusatz sind dezimal. \asm{Pos n} bezeichnet das $n$-te Byte des Zustands (\asm{TastaturBuffer[n]}, Zählung ab 0). $\oplus$ bzw.\ \asm{XOR} ist die bitweise Exklusiv-Oder-Verknüpfung \cite{xor}.
+
+%------------------------------------------------------------------------------
+\subsection{Der 64-Byte-Zustand}\label{sec:zustand}
+Der gesamte Rechenvorgang findet im Array \asm{TastaturBuffer} statt (\emph{Zustand}). Es hat 65 Bytes; die Indizes 0 bis 63 sind die Nutzbytes, Byte 64 ist eine Reserve. Beim Verschlüsseln stehen zu Beginn die ASCII-Werte des Klartextes darin, danach der Zustand nach jedem Rechenschritt und am Ende der Chiffretext. Nicht eingegebene Stellen enthalten \asm{00h} und werden mitverschlüsselt (Kapitel~\ref{sec:einschraenkungen}).
+
+Der Zustand ist \emph{kein} einzelner AES-Block, sondern besteht aus vier Blöcken zu je 16 Bytes, die unabhängig voneinander verarbeitet werden. Jeder Block wird \emph{zeilenweise} als $4\times4$-Matrix gelesen. Für das Byte in Block $b$ ($0\ldots3$), Zeile $r$ ($0\ldots3$) und Spalte $c$ ($0\ldots3$) gilt
+\[
+    \mathtt{Pos} = 16\,b + 4\,r + c .
+\]
+Beispiel: Block 2, Zeile 3, Spalte 1 liegt an $\mathtt{Pos}=16\cdot2+4\cdot3+1=45$.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \caption{Lage der Bytes im Zustand (Positionen \texttt{Pos 0} bis \texttt{Pos 63})}\label{tab:zustand}
+    \begin{tabular}{@{}c|cccc|cccc|cccc|cccc@{}}
+        & \multicolumn{4}{c|}{Block 0} & \multicolumn{4}{c|}{Block 1} & \multicolumn{4}{c|}{Block 2} & \multicolumn{4}{c}{Block 3} \\
+        \hline
+        Z0 &  0 &  1 &  2 &  3 & 16 & 17 & 18 & 19 & 32 & 33 & 34 & 35 & 48 & 49 & 50 & 51 \\
+        Z1 &  4 &  5 &  6 &  7 & 20 & 21 & 22 & 23 & 36 & 37 & 38 & 39 & 52 & 53 & 54 & 55 \\
+        Z2 &  8 &  9 & 10 & 11 & 24 & 25 & 26 & 27 & 40 & 41 & 42 & 43 & 56 & 57 & 58 & 59 \\
+        Z3 & 12 & 13 & 14 & 15 & 28 & 29 & 30 & 31 & 44 & 45 & 46 & 47 & 60 & 61 & 62 & 63 \\
+    \end{tabular}
+\end{table}
+
+Aus der Anordnung folgt: Eine \emph{Zeile} umfasst vier aufeinanderfolgende Bytes (\asm{Pos 4}\ldots\asm{7}), eine \emph{Spalte} die Bytes im Abstand 4 (\asm{Pos 0, 4, 8, 12}). \asm{ShiftRow} arbeitet auf Zeilen (Abschnitt~\ref{sec:vers-shiftrow}), \asm{ShiftColumn} auf Spalten (Abschnitt~\ref{sec:vers-shiftcolumn}).
+
+%------------------------------------------------------------------------------
+\subsection{Rechnen im Körper \texorpdfstring{$\mathrm{GF}(2^8)$}{GF(2 hoch 8)}}\label{sec:gf}
+Die Spaltenrechnung von AES (MixColumns und ihre Inverse) beruht auf dem endlichen Körper $\mathrm{GF}(2^8)$ nach \cite{fips197}. Ein Byte wird dabei als Polynom über $\mathrm{GF}(2)$ aufgefasst; \hexo{57} ist beispielsweise $x^6+x^4+x^2+x+1$. Für den Assembler genügen drei Regeln:
+
+\begin{description}[leftmargin=!,labelwidth=3.4cm,noitemsep]
+    \item[Addition] ist \asm{XOR}. Es gibt keinen Übertrag.
+    \item[Multiplikation mit 2] (\asm{MalZweiPROC}): Das Byte wird um ein Bit nach links geschoben (\asm{SHL AL, 1}). War das oberste Bit gesetzt, steht es nach dem Schieben im Carry-Flag; dann wird zusätzlich mit \asm{1Bh} verknüpft. \hexo{1B} ist der Rest des Reduktionspolynoms $x^8+x^4+x^3+x+1=\hexo{11B}$, bei dem das schon herausgefallene Bit~8 weggelassen wurde.
+    \item[Multiplikation allgemein] (\asm{GFMulPROC}): Schiebe-und-addiere über die 8~Bits des Multiplikators; jeder Zwischenwert $a,2a,4a,\ldots$ wird mit der Regel oben berechnet.
+\end{description}
+
+Abgeleitet: $a\cdot3=(a\cdot2)\oplus a$, und für die inverse Spaltenmatrix werden die Faktoren \hexo{09}, \hexo{0B}, \hexo{0D} und \hexo{0E} benötigt.
+
+\textbf{Warum nicht \asm{MUL}?} Der Prozessorbefehl \asm{MUL} multipliziert ganze Zahlen. Es gilt z.\,B.\ $\hexo{0E}\cdot\hexo{80}=\hexo{700}$ als Ganzzahl (Low-Byte \hexo{00}), aber $\hexo{0E}\cdot\hexo{80}=\hexo{41}$ in $\mathrm{GF}(2^8)$. Ein Versuch mit \asm{MUL} liefert deshalb falsche Spalten; das war eine der Ursachen, warum die inverse Spaltenrechnung in Version~1.0 nicht lief (Kapitel~\ref{sec:aenderungen}).
+
+\textbf{Beispiel: $\hexo{4D}\cdot\hexo{0B}$} (Eingabe \asm{AL = 4Dh}, \asm{DL = 0Bh}). Der Multiplikator $\hexo{0B}=1011_2$ wird von rechts abgearbeitet; \asm{BL} ist der laufende Faktor $a$, \asm{BH} der verbleibende Multiplikator $b$.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Ablauf von \texttt{GFMulPROC} für $\hexo{4D}\cdot\hexo{0B}$}\label{tab:gfmul}
+    \begin{tabular}{@{}cccccc@{}}
+        \toprule
+        Schritt & \asm{BH} ($b$) & Bit 0 & \asm{AL} danach & \asm{BL} vor/nach \asm{SHL} & Überlauf \\
+        \midrule
+        0 & \asm{0B} & 1 & \asm{4D} & \asm{4D} $\to$ \asm{9A} & nein \\
+        1 & \asm{05} & 1 & \asm{D7} & \asm{9A} $\to$ \asm{2F} & ja ($\hexo{34}\oplus\hexo{1B}$) \\
+        2 & \asm{02} & 0 & \asm{D7} & \asm{2F} $\to$ \asm{5E} & nein \\
+        3 & \asm{01} & 1 & \asm{89} & \asm{5E} $\to$ \asm{BC} & nein \\
+        4--7 & \asm{00} & 0 & \asm{89} & -- & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Ergebnis: $\hexo{4D}\cdot\hexo{0B}=\hexo{89}$. In Schritt~1 läuft das oberste Bit von \asm{9A} über (\asm{9A} $=1001\,1010_2$, nach \asm{SHL} bleiben \asm{34} und das Carry-Flag ist gesetzt); deshalb wird mit \asm{1Bh} verknüpft: $\hexo{34}\oplus\hexo{1B}=\hexo{2F}$.
+
+%------------------------------------------------------------------------------
+\subsection{Registerrollen}\label{sec:register}
+Die 16-Bit-Register des Prozessors haben im Programm je nach Programmteil feste Aufgaben. Tabelle~\ref{tab:register} ist die Kurzfassung; die Begründung steht bei den jeweiligen Abschnitten in Kapitel~\ref{sec:asm-dateien}.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.1}
+    \caption{Rollen der Register}\label{tab:register}
+    \begin{tabular}{@{}p{2.1cm}p{9.6cm}@{}}
+        \toprule
+        \textbf{Register} & \textbf{Rolle} \\
+        \midrule
+        \asm{DS} & Zeigt auf das Datensegment (\asm{@DATA}); nur dann sind Variablen wie \asm{TastaturBuffer[SI]} ansprechbar. \\
+        \asm{ES} & Zeigt auf den Videospeicher \asm{0B800h} (Textmodus~3). Jedes \asm{MOV WORD PTR ES:[DI], AX} schreibt \emph{direkt auf den Bildschirm}. In \asm{Beginn} kurz auf \asm{CS} gesetzt (Adresse des Maus-Handlers). \\
+        \asm{DI} & Bildschirmposition (Byte-Offset im Videospeicher) bei Ein-/Ausgabe; Tabellenindex bei der S-Box-Suche und der Schlüsselexpansion; in \asm{ShiftColumn_1} Spaltenanfang. \\
+        \asm{SI} & Zeiger in \asm{TastaturBuffer} bzw.\ Schlüssel (zählt Zeichen/Bytes); Schleifenzähler. \\
+        \asm{AX}/\asm{AL}/\asm{AH} & \asm{AL} = Zeichen bzw.\ Byte in Bearbeitung. \asm{AH} = Farbattribut (\asm{0Fh}, weiß auf schwarz) beim Schreiben auf den Bildschirm; in Rechnungen auf 0 gesetzt, damit \asm{AX} als Index taugt. \\
+        \asm{BX} & Zeilenanfang in \asm{ShiftRow}; Matrixspalte in \asm{ShiftColumn_1}; Hilfsregister in \asm{GFMulPROC}; \asm{BL} = letztes Schlüsselbyte in der Expansion. \\
+        \asm{CX}/\asm{CL} & Zähler: Blocknummer in \asm{ShiftRow}; Nibble-Zähler bei Hexeingabe/-ausgabe; Schleifenzähler (\asm{LOOP}) in \asm{GFMulPROC}; bei der Maus-Einrichtung die Ereignismaske. \\
+        \asm{DX}/\asm{DL} & Zwischenspeicher: erste Hexziffer bei der Eingabe; Originalbyte bei der Ausgabe; Rundenkonstante in der Expansion; Textadresse für \asm{INT 21h}/09h; Faktor $b$ für \asm{GFMulPROC}. \\
+        \asm{BP} & Nur in \asm{ShiftColumn_1} als Spaltenzähler (0 bis 15). \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Warum nicht jedes Register als Index?} Nur \asm{BX}, \asm{SI}, \asm{DI} und \asm{BP} dürfen in eckigen Klammern als Index stehen (\asm{Feld[DI]}), \emph{nicht} \asm{AX} oder \asm{CX}. Deshalb wird ein Byte, das als Tabellenindex dienen soll, zuerst mit \asm{XOR AH, AH} auf 16~Bit erweitert und dann in \asm{DI} kopiert (\asm{MOV DI, AX}).
+
+%------------------------------------------------------------------------------
+\subsection{Bildschirm und Videospeicher}\label{sec:video}
+Das Programm arbeitet im Textmodus~3 (80 Spalten $\times$ 25 Zeilen, 16 Farben). Der Videospeicher beginnt bei Segment \asm{0B800h}; jedes Zeichen belegt dort \emph{zwei} Bytes: erst den ASCII-Code, dann das Farbattribut. Weil der Prozessor die niederwertige Hälfte eines 16-Bit-Wertes zuerst ablegt, genügt ein einziger Schreibbefehl: das Wort \asm{0F48h} (\asm{AL = 48h} $=$ \glqq H\grqq, \asm{AH = 0Fh} $=$ weiß auf schwarz) erscheint als weißes \glqq H\grqq.
+
+Der Byte-Offset eines Zeichens im Videospeicher ergibt sich aus
+\[
+    \mathtt{Offset} = (\mathtt{Zeile}\cdot80+\mathtt{Spalte})\cdot2 = 160\,\mathtt{Zeile}+2\,\mathtt{Spalte}.
+\]
+Beispiel: Das Eingabefeld des Klartextes beginnt in Zeile 12, Spalte 8, also bei $12\cdot160+8\cdot2=1936$ (\asm{DI = 1936}). Pro eingegebenem Zeichen wird \asm{DI} um 2 erhöht, der Pufferindex \asm{SI} aber nur um 1.
+
+Alle Bildschirmtexte sind Arrays aus je 22 Zeilen zu genau 80 Zeichen ohne Zeilenumbruchzeichen und mit \texttt{\$} abgeschlossen; sie werden mit \asm{INT 21h}, Funktion \asm{09h}, ausgegeben. Zeile 0 bleibt leer (der Cursor wird in Zeile 1 gesetzt).
+
+%------------------------------------------------------------------------------
+\subsection{Speicherlayout von Schlüssel und Zustand}\label{sec:speicherlayout}
+Für die Schlüsselbehandlung sind zwei Arrays wichtig, die im Datensegment \emph{lückenlos hintereinander} liegen:
+
+\begin{itemize}[noitemsep]
+    \item \asm{Rundenschluessel_0} (64 Bytes): der Schlüssel selbst -- der eingebaute Standardwert oder ein eingegebener Schlüssel.
+    \item \asm{Rundenschluessel_Expand} (64 Bytes): der \emph{aktuelle Rundenschlüssel}. Er wird mit jeder \asm{Schluesselexpansion} zum nächsten Rundenschlüssel weitergerechnet.
+\end{itemize}
+
+\asm{SchluesselInitialisieren} kopiert \asm{Rundenschluessel_0} nach \asm{Rundenschluessel_Expand} und setzt die Rundenkonstante auf den Startwert \asm{5Fh} zurück (Abschnitt~\ref{sec:vers-schluessel}). Die getrennte Haltung von Quelle und Arbeitskopie erlaubt es, nach mehreren Expansionen wieder beim Ausgangsschlüssel zu beginnen; das nutzt die Entschlüsselung (Abschnitt~\ref{sec:ablauf-e}).

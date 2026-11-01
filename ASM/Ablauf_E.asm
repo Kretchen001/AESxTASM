@@ -2,7 +2,8 @@
 ; Abschlussprogramm fuer das Modul "Assemblerprogrammierung" bei Prof. Krämer
 ;       - Jahrgang 19-INB1 - Tim M. Kretzschmar & Konstantin Blechschmidt
 ;===========================================================================
-; Prinzip: siehe Handbuch Seite 12
+; Prinzip: siehe Dokumentation/LaTeX, Abschnitt "Ablauf_E.asm" (Tabelle der 11 Schritte)
+;          und Dokumentation/Ablaufplan.md, Abschnitt 9
 ;===========================================================================
 ; Inhalt:
 ;         - AblaufEntVorrunde (Label)

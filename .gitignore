@@ -1,0 +1,70 @@
+# ==========================================================================
+# AES (TASM) - Abschlussprojekt Assemblerprogrammierung
+# ==========================================================================
+
+# --- TASM / TLINK / Turbo Debugger (Build- und Debug-Ausgaben) -------------
+# Assembler- und Linker-Ergebnisse werden bei jedem Lauf neu erzeugt
+# (asmaes.bat / start.bat / tdaes.bat).
+*.obj
+*.exe
+*.map
+*.lst
+*.cod
+*.tds
+# Turbo-Debugger: Sitzungs-/Konfigurationsdateien
+*.tr
+*.td
+*.dsk
+*.swp
+
+# --- LaTeX (Dokumentation/LaTeX) --------------------------------------------
+# Hilfsdateien von pdflatex / biber / bibtex / latexmk
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.log
+*.toc
+*.lof
+*.lot
+*.lol
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex
+*.synctex.gz
+*.synctex(busy)
+*.nav
+*.snm
+*.vrb
+*.xdv
+*.bak
+*.tdo
+# Das fertig kompilierte Dokument ist ein Build-Ergebnis (entsteht aus
+# Dokumentation/LaTeX/main.tex).
+Dokumentation/LaTeX/*.pdf
+
+# --- Editor / IDE ------------------------------------------------------------
+.vscode/
+.idea/
+*.sublime-workspace
+*.code-workspace
+*~
+.#*
+\#*#
+
+# --- Betriebssystem ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Archive / Bundles (Transportdateien, kein Quelltext) -------------------
+*.bundle
+*.zip
+
+# Python
+__pycache__/
+*.pyc

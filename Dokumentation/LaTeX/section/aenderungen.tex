@@ -1,0 +1,59 @@
+% Neu in Version 2.0.0 (Grundlage: Git-Commits 53d8c75 bis 73f04b5)
+\section{Änderungen von Version 1.0 auf Version \versionProjekt}\label{sec:aenderungen}
+Dieses Kapitel fasst zusammen, was sich gegenüber der Abgabe von 2021 (Version~1.0, Commit \commit{89f8212}) geändert hat. Jede Änderung ist ein eigener Commit auf dem Branch \texttt{v2.0.0} mit ausführlicher Begründung (\texttt{git log v2.0.0}); die Commit-Nummern in der Tabelle führen zur Änderung im Repository \href{\repoURL}{github.com/Kretchen001/AESxTASM}.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.15}
+    \caption{Übersicht der Änderungen in Version \versionProjekt}\label{tab:aenderungen}
+    \begin{tabular}{@{}p{2.7cm}p{6.2cm}p{2.6cm}p{1.6cm}@{}}
+        \toprule
+        \textbf{Bereich} & \textbf{Änderung} & \textbf{Datei(en)} & \textbf{Commit} \\
+        \midrule
+        Inverse S-Box & Eintrag für Index \hexo{70} war \asm{0Dh}, richtig ist \asm{0D0h} & \asm{SBOX.asm} & \commit{53d8c75} \\
+        ShiftRow & Schleife endete nach 3 statt 4 Blöcken (\asm{CMP CX, 4} $\to$ \asm{5}) & \asm{VERS.asm}, \asm{ENTS.asm} & \commit{1990683} \\
+        Schlüssel-eingabe & Eigener Schlüssel wirkte nicht; vier unabhängige Fehler (Abschnitt~\ref{sec:aend-schluessel}) & \asm{Ver_Code.asm}, \asm{Ent_Code.asm} & \commit{3d4df8e} \\
+        MixColumns & \asm{MalZweiPROC} korrigiert, \asm{GFMulPROC} und \asm{InvMixMatrix} neu, \asm{ShiftColumn_1} neu geschrieben & \asm{VERS.asm}, \asm{ENTS.asm}, \asm{config.asm} & \commit{75b5c2b} \\
+        Ablaufplan & Neues Dokument mit Rechenbeispiel \glqq Hallo\grqq & \asm{Dokumentation/Ablaufplan.md} & \commit{73f04b5} \\
+        Dokumentation & LaTeX-Projekt statt PDFs, Inhalt auf 2.0.0 gebracht (dieses Dokument) & \asm{Dokumentation/LaTeX} & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+%------------------------------------------------------------------------------
+\subsection{Inverse S-Box}\label{sec:aend-sbox}
+In der Tabelle \asm{s_1_0} (Zeile für die Indizes \hexo{70}--\hexo{7F}) fehlte im ersten Eintrag eine Ziffer: \asm{0Dh} statt \asm{0D0h}. Die Tabelle hatte weiterhin 256 Einträge, daher gab es keinen Assembler- und keinen Laufzeitfehler. Falsch war nur das Ergebnis, sobald die Entschlüsselung ein Zwischenergebnis \hexo{70} nachschlug: Es kam \hexo{0D} statt \hexo{D0} zurück. Die Tabelle stimmt jetzt in allen 256 Einträgen mit der AES-S-Box überein (Modellprüfung M1, Kapitel~\ref{sec:tests}).
+
+\subsection{ShiftRow über alle vier Blöcke}\label{sec:aend-shiftrow}
+\asm{ShiftRow} und \asm{ShiftRow_1} behandeln den Zustand als vier Blöcke zu je 16 Bytes. Die Blockzählung \asm{CX} wird vor dem Vergleich erhöht; mit \asm{CMP CX, 4} wurde die Schleife beim vierten Block schon verlassen, bevor er bearbeitet war. Die Bytes \asm{Pos 48}--\asm{63} blieben in jeder Runde unverschoben. Weil beide Routinen sich gleich verhielten, blieb der Roundtrip konsistent; das Verfahren war nur schwächer als beabsichtigt. Der Test fiel nicht auf, weil Testfall~3 nur 18 Zeichen verwendet und der vierte Block dort nur Nullbytes enthält (Abschnitt~\ref{sec:tf3}). Mit \asm{CMP CX, 5} laufen die Durchgänge \asm{CX}$=1,2,3,4$. Die Startwerte für den vierten Block (\asm{SI}$=52$, \asm{BX}$=52$) passten bereits.
+
+\subsection{Eingabe eines eigenen Schlüssels}\label{sec:aend-schluessel}
+Ein eingegebener Schlüssel ließ sich in Version~1.0 nicht verwenden. Ursache waren vier voneinander unabhängige Fehler, die sich gegenseitig verdeckten:
+\begin{enumerate}[label=\arabic*.,noitemsep]
+    \item \asm{SI} wurde vor der Schlüsseleingabe nicht zurückgesetzt. Es zählte noch die Zeichen des Textes, der Schlüssel begann also bei dem Index der Textlänge statt bei 0. Bei 64 Zeichen (Entschlüsselung: immer) lag er genau hinter \asm{Rundenschluessel_0}, also in \asm{Rundenschluessel_Expand} (die Arrays liegen hintereinander).
+    \item \asm{Rundenschluessel_Expand} wurde zu früh gefüllt: \asm{AES.asm} ruft \asm{SchluesselInitialisieren} vor der Eingabe auf. Ein eigener Schlüssel stand nie in \asm{Rundenschluessel_Expand}. Seit 2.0.0 wird die PROC zusätzlich unmittelbar nach der Eingabe aufgerufen (\asm{AufrufenVerAusASM}, \asm{AufrufenEntAusASM}).
+    \item In der zweiten Schlüsselzeile fehlte \asm{SUB AL, 48} (Umrechnung ASCII $\to$ Hexwert). Die Bytes 32 bis 63 waren um \hexo{30} zu groß.
+    \item \asm{Ver_Code.asm} setzte \asm{CL} (Nibble-Zähler) und \asm{DL} (Zwischenspeicher) nicht auf 0, im Gegensatz zu \asm{Ent_Code.asm}. Der Fehler wurde durch Lesen des Codes festgestellt; der Registerinhalt zur Laufzeit wurde nicht gemessen.
+\end{enumerate}
+Zu den Details siehe Kapitel~\ref{sec:asm-dateien} (\asm{Ver_Code.asm}, \asm{Ent_Code.asm}).
+
+\subsection{MixColumns und ihre Inverse}\label{sec:aend-mixcolumns}
+Bei der Fehlersuche an der inversen Spaltenrechnung zeigte sich, dass auch die Vorwärtsrichtung nur zufällig in Testfall~4 stimmte:
+\begin{itemize}[noitemsep]
+    \item \textbf{\asm{MalZweiPROC}}: vorzeichenbehafteter Sprung (\asm{JNG}), dadurch nie reduziert; falsche Reihenfolge (erst reduzieren, dann verdoppeln); \asm{XOR AX, 283} hätte außerdem \asm{AH} verändert (Abschnitt~\ref{sec:vers-shiftcolumn}). Neu: \asm{SHL AL, 1} / \asm{JNC} / \asm{XOR AL, 1Bh}. Die Spalte \hexo{DB} \hexo{13} \hexo{53} \hexo{45} ergab vorher \hexo{95} \hexo{4D} \hexo{A1} \hexo{A7}, richtig ist \hexo{8E} \hexo{4D} \hexo{A1} \hexo{BC} (\cite{fips197}).
+    \item \textbf{\asm{GFMulPROC}} (neu): allgemeine Multiplikation für die Faktoren \hexo{09}, \hexo{0B}, \hexo{0D}, \hexo{0E}.
+    \item \textbf{\asm{ShiftColumn_1}} (neu geschrieben): \asm{MUL} statt $\mathrm{GF}(2^8)$, transponiertes Zurückschreiben und überschriebene Eingaben waren die drei Fehler der alten Fassung.
+    \item \textbf{\asm{InvMixMatrix}} (neu in \asm{config.asm}): die inverse C-Matrix als Datenfeld.
+\end{itemize}
+Der Ablauf (\asm{Ablauf_V.asm}, \asm{Ablauf_E.asm}) wurde dabei bewusst \emph{nicht} umgestellt.
+
+\subsection{Folgen für die Verwendung}
+\begin{itemize}[noitemsep]
+    \item Chiffretexte, die mit Version~1.0 erzeugt wurden, lassen sich mit Version~\versionProjekt\ nicht mehr (vollständig) entschlüsseln: Der vierte Block (\asm{Pos 48}--\asm{63}) wird anders verschoben, und die Entschlüsselung nutzt die korrigierte S-Box.
+    \item Ein eingegebener Schlüssel wirkt jetzt tatsächlich. Wer in Version~1.0 einen Schlüssel eingegeben hat, bekam dennoch ein mit dem Standardschlüssel (Verschlüsselung) bzw.\ ein mit gemischten Schlüsseln (Entschlüsselung) berechnetes Ergebnis.
+    \item Die kompilierte \asm{AES.EXE} der Abgabe von 2021 entspricht Version~1.0. Für Version~\versionProjekt\ ist neu zu übersetzen (\asm{asmaes.bat}).
+\end{itemize}
+
+\subsection{Was unverändert ist}
+Bedienoberfläche, Bildschirme, Mausabfrage, Dateistruktur und der aktive \glqq AES-ähnlichen\grqq{} Ablauf (zwei Runden, ohne MixColumns) sind unverändert. Das Verfahren bleibt AES-ähnlich und nicht für den Schutz echter Daten geeignet (Kapitel~\ref{sec:einschraenkungen}).

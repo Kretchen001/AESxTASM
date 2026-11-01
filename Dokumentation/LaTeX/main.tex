@@ -1,0 +1,266 @@
+%==============================================================================
+% AES - Symmetrische Verschluesselung in TASM umgesetzt
+% Abschlussprojekt "Assemblerprogrammierung" - 19-INB1
+%
+% Optik nach dem Muster (main.tex) von Tim Kretzschmar.
+% Compiler: pdflatex (+ biber fuer das Literaturverzeichnis)
+%
+%   pdflatex main && biber main && pdflatex main && pdflatex main
+%
+% Die ehemaligen PDFs liegen als einzelne Dateien in section/ vor und werden
+% weiter unten per \input eingeladen. Nicht gewuenschte Teile einfach mit %
+% auskommentieren.
+%==============================================================================
+\documentclass[11pt,a4paper,twoside]{article}
+\usepackage[top=1.5in,bottom=1in,left=1.125in,right=1.125in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[center]{caption}
+\usepackage{booktabs}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{color}
+\usepackage{float}
+\usepackage{needspace}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{tocloft}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage[singlespacing]{setspace}
+\usepackage[ngerman]{babel}
+
+% label item in itemize
+\usepackage{enumitem}
+
+% Listings (ersetzt minted -> kein -shell-escape noetig)
+\usepackage{listings}
+\definecolor{LightGray}{gray}{0.95}
+\lstdefinelanguage{TASM}{
+    morekeywords={MOV,ADD,SUB,XOR,CMP,JMP,JE,JNE,JNC,JC,CALL,RET,PUSH,POP,INT,
+        SHL,SHR,ROL,ROR,LOOP,NOP,INC,DEC,PROC,ENDP,ENDS,INCLUDE,DB,DW},
+    sensitive=false,
+    morecomment=[l]{;},
+    morestring=[b]"
+}
+\lstset{
+    language=TASM,
+    frame=lines,
+    framesep=2mm,
+    backgroundcolor=\color{LightGray},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\bfseries,
+    commentstyle=\itshape\color{gray},
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    xleftmargin=2mm,
+    xrightmargin=2mm,
+    aboveskip=3mm,
+    belowskip=3mm,
+    captionpos=b
+}
+\renewcommand{\lstlistingname}{Code}
+\renewcommand{\lstlistlistingname}{Codeverzeichnis}
+
+% Kopf-/Fusszeile
+% https://web.archive.org/web/20220118000906/https://tex.stackexchange.com/questions/109654/page-numbering-different-side-of-heading-for-odd-and-even-page
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{14pt}
+\fancyhead[C]{
+    \ifodd
+        \value{page} AES -- Symmetrische Verschlüsselung in TASM (v\versionProjekt)
+        \small    % Linie weg wenn einkommentiert
+    \else
+        Abschlussprojekt Assemblerprogrammierung
+        \small    % Linie weg wenn einkommentiert
+    \fi
+}
+\fancyhead[R]{\thepage\ifodd\value{page}\else\hfill\fi}
+
+\fancypagestyle{plain}{
+}
+
+% url vor biblatex laden (Leerzeichen in \asm{...} erhalten)
+\usepackage[obeyspaces]{url}
+
+% Biblatex
+\usepackage{csquotes}
+\usepackage[
+    natbib=true,
+    hyperref=true,
+    backend=biber,
+    style=numeric,
+    natbib=true,
+    sorting=none,
+    defernumbers=true,
+    block=nbpar,
+    backref=true
+]{biblatex}
+\addbibresource{bib.bib}
+\usepackage{hyperref}
+
+% If you want to break on URL numbers
+\setcounter{biburlnumpenalty}{9000}
+% If you want to break on URL lower case letters
+\setcounter{biburllcpenalty}{9000}
+% If you want to break on URL UPPER CASE letters
+\setcounter{biburlucpenalty}{9000}
+
+\setlength{\parindent}{0mm} % also nicht vorhanden
+\setlength{\parskip}{3mm}
+\setlength{\emergencystretch}{4em}
+\tolerance=1500
+
+% Grafiken -----------------------------------------------------------------
+\usepackage{graphics,graphicx}
+\usepackage{calc}
+% Abbildungen und Tabellen kapitelweise nummerieren (Abbildung 1.1, 2.1, ...)
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+
+% Zeilenabstand ------------------------------------------------------------
+\renewcommand{\baselinestretch}{1.25}
+
+% Seitenlayout --------------------------------------------------------------
+% twoside setzt \flushbottom: Seiten werden senkrecht auseinandergezogen,
+% sobald das naechste Bild nicht mehr passt (grosse Luecken um Ueberschriften).
+\raggedbottom
+% Gleitobjekte duerfen auf der Seite nach oben/unten wandern statt feststehend
+% ([H]) Luecken zu reissen; \floatpagefraction/\textfraction lockern das etwas.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.7}
+
+% Inhaltsverzeichnis zentrieren und Tiefe einstellen -----------------------
+% per \addto, sonst ueberschreibt babel den Titel beim \begin{document}
+\addto\captionsngerman{\renewcommand{\contentsname}{\hfill\bfseries\Large Inhaltsverzeichnis \hfill}}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+% Fußnoten mit kleinen römischen Zahlen
+\renewcommand{\thefootnote}{\textcolor{green}{\roman{footnote}}}
+
+% footnote ganz unten auf jeder Seite
+\usepackage[bottom]{footmisc}
+
+\usepackage{tabularx}
+\usepackage{ltablex}
+\usepackage{bm}
+
+\def\Cpp{{C\nolinebreak[4]\hspace{-.05em}\raisebox{.4ex}{\tiny\bf ++}}}
+
+% Variablen ----------------------------------------------------------------
+\newcommand{\autorEins}{Tim Michael Kretzschmar}
+\newcommand{\autorZwei}{Konstantin Blechschmidt}
+\newcommand{\themaProjekt}{AES -- Symmetrische Verschlüsselung in TASM umgesetzt}
+\newcommand{\versionProjekt}{2.0.0}
+% Verweise auf das Git-Repository (Commits, Branch)
+\newcommand{\repoURL}{https://github.com/Kretchen001/AESxTASM}
+\newcommand{\commit}[1]{\href{\repoURL/commit/#1}{\texttt{#1}}}
+% Kürzere Referenzierung
+\newcommand{\refPlusName}[1]{\ref{#1} \nameref{#1}}
+% Code-Namen (Label, PROC, Variablen, Dateien) in Schreibmaschinenschrift.
+% Unterstriche muessen NICHT escaped werden (\asm{Ver_Code.asm}); an ihnen darf
+% umgebrochen werden und das Makro ist in \caption{...} verwendbar.
+\DeclareUrlCommand\asm{\urlstyle{tt}}
+% lange Namen (SchluesselInitialisieren, Rundenschluessel_Expand) duerfen notfalls vor
+% einem Grossbuchstaben (CamelCase) umbrechen, statt in den Rand zu laufen
+\makeatletter\g@addto@macro\UrlBreaks{\do\A\do\B\do\C\do\D\do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M\do\N\do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X\do\Y\do\Z}\makeatother
+\Urlmuskip=0mu plus 1mu
+% Hexadezimalzahl: \hexo{4D} -> 4Dh
+\newcommand{\hexo}[1]{\texttt{#1h}}
+% Haekchen / Kreuz (Testfaelle)
+\newcommand{\iconok}{\raisebox{-0.3ex}{\includegraphics[height=1.1em]{images/icon_ok.png}}}
+\newcommand{\iconfehler}{\raisebox{-0.3ex}{\includegraphics[height=1.1em]{images/icon_fehler.png}}}
+% Variablen ----------------------------------------------------------------
+
+% Eigenschaften einstellen
+\hypersetup{
+    pdftitle={\themaProjekt{} -- Version \versionProjekt},
+    pdfauthor={\autorEins, \autorZwei},
+    pdfcreator={\autorEins, \autorZwei},
+    pdfkeywords={AES} {TASM} {Assembler},
+    pdfnewwindow = true,
+    colorlinks,
+    pdfstartview = FitH,
+    bookmarksopen = true,
+    bookmarksnumbered = true,
+    linkcolor = black,
+    urlcolor = blue,
+    plainpages = false,
+    hypertexnames = false,
+    citecolor = blue
+}
+
+% Dokument -----------------------------------------------------------------
+\begin{document}
+    % Deckblatt (ehemals Titelseite der AES.pdf)
+    \input{section/deckblatt.tex}
+
+    % Inhaltsverzeichnis
+    \phantomsection
+    \addcontentsline{toc}{section}{Inhaltsverzeichnis}
+    \tableofcontents\label{Inhaltsverzeichnis}
+
+    % ---- Handbuch (ehemals AES.pdf, Kapitel 1 bis 3) ----
+    \newpage
+    \input{section/einleitung.tex}
+    \newpage
+    \input{section/grundlagen.tex}
+    \newpage
+    \input{section/asm_dateien.tex}
+    \newpage
+    \input{section/ablauf_beispiel.tex}
+    \newpage
+    \input{section/batch.tex}
+    \newpage
+    \input{section/browser.tex}               % neu in 2.0.0
+
+    % ---- Weitere Dokumente (ehemals eigene PDFs) ----
+    \newpage
+    \input{section/anleitung.tex}              % Anleitung.pdf
+    \newpage
+    \input{section/funktionalitaet.tex}        % Deckblatt_und_Funktionalitaet.pdf
+    \newpage
+    \input{section/einschraenkungen.tex}       % neu in 2.0.0
+    \newpage
+    \input{section/aenderungen.tex}           % neu in 2.0.0
+    \newpage
+    \input{section/entwurfsskizze.tex}         % Entwurfsskizze.pdf
+    \newpage
+    \input{section/tests.tex}                  % Test(s).pdf
+    \newpage
+    \input{section/erklaerung.tex}             % Verweis V1 + neue Erklaerung 2.0.0
+
+    \nocite{*}
+    \newpage
+    \phantomsection
+    \printbibheading[title={Quellen}]
+    \addcontentsline{toc}{section}{Quellen}
+    % \printbibliography[type=book, heading=subbibliography, title={Bücher}]  % keine Buecher vorhanden
+    \printbibliography[type=online, heading=subbibliography, title={Links}]
+
+    \newpage
+    \phantomsection
+    \listoffigures
+    \addcontentsline{toc}{section}{\listfigurename}
+
+    \newpage
+    \phantomsection
+    \addcontentsline{toc}{section}{\listtablename}
+    \listoftables
+
+    \newpage
+    \phantomsection
+    \addcontentsline{toc}{section}{\lstlistlistingname}
+    \lstlistoflistings
+
+    % Die Erklaerung der Autoren steht in section/erklaerung.tex
+    % (V1.0 als Verweis inkl. Unterschriften von 2021, neue Erklaerung zu 2.0.0).
+
+\end{document}

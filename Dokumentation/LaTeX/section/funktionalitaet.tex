@@ -1,0 +1,29 @@
+% Ehemals Deckblatt_und_Funktionalitaet.pdf (die Erklaerung steht jetzt in erklaerung.tex)
+\section{Funktionalität}\label{sec:funktionalitaet}
+\textit{Abschlussprojekt Modul \glqq Assemblerprogrammierung\grqq{} von Konstantin Blechschmidt \& Tim M.\ Kretzschmar}
+
+\subsection*{Daten}
+TASM; Prozessor .486; DOS-Box Version 0.74
+
+\subsection*{Was geht}
+\begin{itemize}[noitemsep]
+    \item Grafik und Mausklicken um Modi zu wechseln
+    \item Eingabe/Ausgabe (Klartext (ASCII) und Hexadezimal)
+    \item Beenden über \glqq ESC\grqq{} aus dem Hauptmenü heraus
+    \item \textbf{Eigener Schlüssel} (hexadezimal, bis 64 Bytes) -- seit 2.0.0 tatsächlich wirksam
+    \item Schlüsselexpansion \& Schlüssel anwenden
+    \item SBOX-Substitution \& inverse Version (seit 2.0.0 ohne Tabellenfehler)
+    \item ShiftRow \& die inverse Version (seit 2.0.0 über alle vier Blöcke)
+    \item ShiftColumn (MixColumns) \emph{und} die inverse Version, mit \asm{GFMulPROC} als $\mathrm{GF}(2^8)$-Multiplikation (neu in 2.0.0, aber nicht im aktiven Ablauf eingebunden)
+    \item Kompilieren, Debugger starten und einfaches Starten per Batch-Datei
+\end{itemize}
+
+\subsection*{Was geht nicht}
+\begin{itemize}[noitemsep]
+    \item Echtes AES nach \cite{fips197}: nur zwei Runden, keine Anfangs-Schlüsseladdition, keine MixColumns im aktiven Ablauf (Kapitel~\ref{sec:einschraenkungen}). Die Verschlüsselung ist \emph{AES-ähnlich} und nicht zum Schutz echter Daten gedacht.
+    \item Die auskommentierte 10-Runden-Variante nach AES-Standard ist nicht aktiviert.
+    \item Version~2.0.0 wurde bisher an einem Python-Modell geprüft; der Lauf des übersetzten Programms in der DOS-Box steht noch aus (Kapitel~\ref{sec:tests}).
+\end{itemize}
+
+\subsection*{Erklärung der Autoren}
+Die Erklärung der Autoren steht seit Version~\versionProjekt\ in einem eigenen Kapitel (Kapitel~\ref{sec:erklaerung}): als Verweis auf die unterzeichnete Erklärung zur Version~1.0 und als neue Erklärung zur Version~\versionProjekt.

@@ -86,8 +86,9 @@ ShiftRow_1 PROC FAR
 
 ChangeBlock:
         MOV DI, 0             ; Zähler für die gerade zu bearbeitende Zeile des Blockes
-        INC CX
-        CMP CX, 4             ; 4 Bloecke durchgegangen?
+        INC CX                ; CX zaehlt ab 1 -> der 1. Block wird mit CX = 1 bearbeitet
+        CMP CX, 5             ; Erst bei CX = 5 sind alle 4 Bloecke (CX = 1..4) durchgegangen
+                              ; (frueher CMP CX, 4 -> nur 3 Bloecke, Bytes 48..63 blieben unverschoben)
         JE EndeShiftRow
 
 TastaturBufferInit:
@@ -194,144 +195,70 @@ ShiftRow_1 ENDP
 ; 0Dh 09h 0Eh 0Bh
 ; 0Bh 0Dh 09h 0Eh
 
+; Arbeitsweise (pro Spalte, 4 Bloecke * 4 Spalten = 16 Spalten):
+;   1. Die 4 Eingabewerte der Spalte (Index DI, DI+4, DI+8, DI+12) werden nach ShiftColumnZW2 gesichert.
+;   2. Fuer jede der 4 Zeilen der inversen C-Matrix wird ein Ausgabewert als XOR der 4 Produkte
+;      Eingabe[c] * Matrix[Zeile][c] berechnet - die Produkte im Koerper GF(2^8) (GFMulPROC aus VERS.asm).
+;   3. Das Ergebnis wird sofort an die Stelle der Zeile zurueckgeschrieben. Weil die Eingaben gesichert sind,
+;      kann nichts ueberschrieben werden, was noch gebraucht wird.
+; Frueher gescheitert (siehe Entwurfsskizze): MUL ist eine normale Ganzzahl-Multiplikation (kein GF(2^8)),
+; die Ergebnisse wurden an SI = 4*Spalte + Zeile (transponiert) geschrieben, und die Zeile-1-Ergebnisse
+; ueberschrieben noch benoetigte Eingaben der Zeilen 2..4.
+; Register:  BP = Spaltennummer 0..15,  DI = Index der 1. Zeile der Spalte im TastaturBuffer,
+;            SI = 4 * Matrixzeile (0,4,8,12; zugleich Zeilenversatz im TastaturBuffer),
+;            BX = Matrixspalte 0..3,  CH = XOR-Summe,  AL/DL = Faktoren fuer GFMulPROC
 ShiftColumn_1 PROC FAR
-        PUSH SI DI CX BP BX AX      ; Sicher ist sicher
-        MOV AX, 0             ; AX, vor allem AH 0 setzen
-        MOV BX, 0
-        MOV CX, 0             ; CX = Nummer des Blocks
-        MOV DI, 0             ; DI = Stelle im Text
-        MOV SI, 0
+        PUSH AX BX CX DX SI DI BP   ; Sicher ist sicher
 
-ColumnStart_1:
+        MOV BP, 0             ; BP = laufende Spaltennummer ueber alle 4 Bloecke (0..15)
 
-Zeile1:
+InvSpalteStart:
+        ; Index der ersten Zeile dieser Spalte: Blockanfang (BP / 4 * 16) + Spalte im Block (BP mod 4)
+        MOV AX, BP
+        SHR AX, 2             ; Blocknummer 0..3
+        SHL AX, 4             ; * 16 -> Blockanfang im TastaturBuffer
+        MOV DI, BP
+        AND DI, 3             ; Spalte innerhalb des Blocks
+        ADD DI, AX            ; DI = Index von Zeile 1 dieser Spalte
+
+        ; Eingabespalte sichern, damit sie beim Zurueckschreiben nicht ueberschrieben wird
         MOV AL, TastaturBuffer[DI]
-        MOV DL, 0Eh
-        MUL DL
-        MOV BL, AL
-
+        MOV ShiftColumnZW2[0], AL
         MOV AL, TastaturBuffer[DI+4]
-        MOV DL, 0Bh
-        MUL DL
-        XOR BL, AL
-
+        MOV ShiftColumnZW2[1], AL
         MOV AL, TastaturBuffer[DI+8]
-        MOV DL, 0Dh
-        MUL DL
-        XOR BL, AL
-
+        MOV ShiftColumnZW2[2], AL
         MOV AL, TastaturBuffer[DI+12]
-        MOV DL, 09h
-        MUL DL
-        XOR BL, AL
-        MOV TastaturBuffer[SI], BL
+        MOV ShiftColumnZW2[3], AL
 
-        INC DI
-        ADD SI, 4
-        CMP DI, 4
-        JL Zeile1
-        SUB DI, 4
-        SUB SI, 16
-        INC SI
+        MOV SI, 0             ; SI = 4 * Matrixzeile
 
-Zeile2:
-        MOV AL, TastaturBuffer[DI]
-        MOV DL, 09h
-        MUL DL
-        MOV BL, AL
+InvZeileStart:
+        MOV BX, 0             ; BX = Matrixspalte
+        MOV CH, 0             ; CH = XOR-Summe der vier Produkte
 
-        MOV AL, TastaturBuffer[DI+4]
-        MOV DL, 0Eh
-        MUL DL
-        XOR BL, AL
+InvProduktStart:
+        MOV AL, ShiftColumnZW2[BX]   ; Eingabewert der Matrixspalte BX
+        MOV DL, InvMixMatrix[SI+BX]  ; zugehoeriger Faktor 09h/0Bh/0Dh/0Eh (config.asm)
+        CALL GFMulPROC        ; AL = AL * DL in GF(2^8)
+        XOR CH, AL            ; Produkte aufsummieren (Addition in GF(2^8) = XOR)
+        INC BX
+        CMP BX, 4
+        JL InvProduktStart
 
-        MOV AL, TastaturBuffer[DI+8]
-        MOV DL, 0Bh
-        MUL DL
-        XOR BL, AL
+        ADD DI, SI            ; Zielindex = Spaltenanfang + 4 * Zeile
+        MOV TastaturBuffer[DI], CH
+        SUB DI, SI            ; zurueck auf den Spaltenanfang
 
-        MOV AL, TastaturBuffer[DI+12]
-        MOV DL, 0Dh
-        MUL DL
-        XOR BL, AL
-        MOV TastaturBuffer[SI], BL
+        ADD SI, 4             ; naechste Matrixzeile
+        CMP SI, 16
+        JL InvZeileStart
 
-        INC DI
-        ADD SI, 4
-        CMP DI, 4
-        JL Zeile2
-        SUB DI, 4
-        SUB SI, 16
-        INC SI
-
-Zeile3:
-        MOV AL, TastaturBuffer[DI]
-        MOV DL, 0Dh
-        MUL DL
-        MOV BL, AL
-
-        MOV AL, TastaturBuffer[DI+4]
-        MOV DL, 09h
-        MUL DL
-        XOR BL, AL
-
-        MOV AL, TastaturBuffer[DI+8]
-        MOV DL, 0Eh
-        MUL DL
-        XOR BL, AL
-
-        MOV AL, TastaturBuffer[DI+12]
-        MOV DL, 0Bh
-        MUL DL
-        XOR BL, AL
-        MOV TastaturBuffer[SI], BL
-
-        INC DI
-        ADD SI, 4
-        CMP DI, 4
-        JL Zeile3
-        SUB DI, 4
-        SUB SI, 16
-        INC SI
-
-
-Zeile4:
-        MOV AL, TastaturBuffer[DI]
-        MOV DL, 0Bh
-        MUL DL
-        MOV BL, AL
-
-        MOV AL, TastaturBuffer[DI+4]
-        MOV DL, 0Dh
-        MUL DL
-        XOR BL, AL
-
-        MOV AL, TastaturBuffer[DI+8]
-        MOV DL, 09h
-        MUL DL
-        XOR BL, AL
-
-        MOV AL, TastaturBuffer[DI+12]
-        MOV DL, 0Eh
-        MUL DL
-        XOR BL, AL
-        MOV TastaturBuffer[SI], BL
-
-        INC DI
-        ADD SI, 4
-        CMP DI, 4
-        JL Zeile4
-        SUB DI, 4
-        SUB SI, 16
-        INC SI
-
-        ADD DI, 16
-        ADD SI, 12
-        INC CX
-        CMP CX, 4
-        JL ColumnStart_1
+        INC BP                ; naechste Spalte
+        CMP BP, 16
+        JL InvSpalteStart
 
 EndBereichShiftColumn_1:
-        POP AX BX BP CX DI SI      ; Sicher ist sicher
+        POP BP DI SI DX CX BX AX    ; Sicher ist sicher
         RET
 ShiftColumn_1 ENDP

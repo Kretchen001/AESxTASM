@@ -201,3 +201,13 @@ ShiftBXZwSpeicher DW 0
 ; ShiftColumnVariablen
 ShiftColumnZW DB 0
 ShiftColumnZW2 DB 4 DUP(0)
+
+; Inverse C-Matrix fuer ShiftColumn_1 (InvMixColumns), zeilenweise 4x4:
+;       0Eh 0Bh 0Dh 09h
+;       09h 0Eh 0Bh 0Dh
+;       0Dh 09h 0Eh 0Bh
+;       0Bh 0Dh 09h 0Eh
+InvMixMatrix DB 0Eh, 0Bh, 0Dh, 09h
+             DB 09h, 0Eh, 0Bh, 0Dh
+             DB 0Dh, 09h, 0Eh, 0Bh
+             DB 0Bh, 0Dh, 09h, 0Eh

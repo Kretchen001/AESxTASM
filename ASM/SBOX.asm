@@ -57,8 +57,8 @@ s_1_0 DB 52h, 09h, 6Ah, 0D5H, 30h, 36h, 0A5h, 38h, 0BFh, 40h, 0A3h, 9Eh, 81h, 0F
       DB 6Ch, 70h, 48h, 50h, 0FDh, 0EDh, 0B9h, 0DAh, 5Eh, 15h, 46h, 57h, 0A7h, 8Dh, 9Dh, 84h
         ; 96..111
       DB 90h, 0D8h, 0ABh, 00h, 8Ch, 0BCh, 0D3h, 0Ah, 0F7h, 0E4h, 58h, 05h, 0B8h, 0B3h, 45h, 06h
-        ; 112..127
-      DB 0Dh, 2Ch, 1Eh, 8Fh, 0CAh, 3Fh, 0Fh, 02h, 0C1h, 0AFh, 0BDh, 03h, 01h, 13h, 8Ah, 6Bh
+        ; 112..127  (Index 70h = 0D0h; war faelschlich 0Dh -> siehe Commit-Historie)
+      DB 0D0h, 2Ch, 1Eh, 8Fh, 0CAh, 3Fh, 0Fh, 02h, 0C1h, 0AFh, 0BDh, 03h, 01h, 13h, 8Ah, 6Bh
         ; 128..143
       DB 3Ah, 91h, 11h, 41h, 4Fh, 67h, 0DCh, 0EAh, 97h, 0F2h, 0CFh, 0CEh, 0F0h, 0B4h, 0E6h, 73h
         ; 144..159

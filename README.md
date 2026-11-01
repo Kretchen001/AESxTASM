@@ -36,6 +36,14 @@ Bitte nur in der DOS Box Umgebung starten!
   Dokumentation/Modelltest/     (Python-Nachbau der Rechen-PROCs, prueft sie gegen unabhaengige Referenzen:
                                  python3 Dokumentation/Modelltest/modelltest.py)
 
+--Browserversion (ohne DOS-Box)--
+
+  web/                          (DOS-Box als WebAssembly im Browser, js-dos)
+                                 Starten: python3 web/serve.py   oder   node web/serve.js
+                                 dann http://localhost:8000 oeffnen. Details: web/README.md
+                                 Die EXE darin ist mit JWasm gebaut (web/tools/build_jsdos.py), noch nicht im
+                                 Emulator geprueft.
+
 --Version 2.0.0--
 
   Behoben: inverse S-Box (Index 70h), ShiftRow (alle 4 Bloecke), eigene Schluesseleingabe,

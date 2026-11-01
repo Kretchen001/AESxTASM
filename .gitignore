@@ -42,9 +42,8 @@
 *.bak
 *.tdo
 # Das fertig kompilierte Dokument ist ein Build-Ergebnis (entsteht aus
-# Dokumentation/LaTeX/main.tex). Soll es doch im Repo liegen, diese Zeile
-# entfernen oder per "git add -f" aufnehmen.
-Dokumentation/LaTeX/main.pdf
+# Dokumentation/LaTeX/main.tex).
+Dokumentation/LaTeX/*.pdf
 
 # --- Editor / IDE ------------------------------------------------------------
 .vscode/
